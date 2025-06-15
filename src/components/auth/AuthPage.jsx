@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
+import { usuariosService } from '../../services/usuariosService';
 
 const AuthPage = ({ onLogin, onBack }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -11,28 +12,12 @@ const AuthPage = ({ onLogin, onBack }) => {
     confirmPassword: '',
     name: '',
     email: '',
-    role: 'padre', // Siempre será padre
+    role: 'padre',
     cedula: '',
     telefono: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Usuarios predefinidos para el demo
-  const users = [
-    { username: 'admin', password: 'admin123', role: 'administrador', name: 'Administrador Sistema', email: 'admin@sistema.com' },
-    { username: 'director1', password: 'director123', role: 'director', name: 'Dr. Roberto Méndez', email: 'roberto.mendez@centros.com', centrosAsignados: [1, 2] },
-    { username: 'director2', password: 'director123', role: 'director', name: 'Dra. Carmen Jiménez', email: 'carmen.jimenez@centros.com', centrosAsignados: [3, 4, 5] },
-    { username: 'director3', password: 'director123', role: 'director', name: 'Dr. Luis Fernández', email: 'luis.fernandez@centro.com', centrosAsignados: [6] },
-    { username: 'doctor1', password: 'doctor123', role: 'doctor', name: 'Dr. Juan Pérez', email: 'juan.perez@hospital.com', centroTrabajo: 1 },
-    { username: 'doctor2', password: 'doctor123', role: 'doctor', name: 'Dra. María González', email: 'maria.gonzalez@clinica.com', centroTrabajo: 2 },
-    { username: 'doctor3', password: 'doctor123', role: 'doctor', name: 'Dr. Pedro Ramírez', email: 'pedro.ramirez@centro.com', centroTrabajo: 1 },
-    { username: 'doctor4', password: 'doctor123', role: 'doctor', name: 'Dra. Ana Morales', email: 'ana.morales@centro.com', centroTrabajo: 3 },
-    { username: 'doctor5', password: 'doctor123', role: 'doctor', name: 'Dr. Carlos Vega', email: 'carlos.vega@centro.com', centroTrabajo: 4 },
-    { username: 'doctor6', password: 'doctor123', role: 'doctor', name: 'Dra. Laura Díaz', email: 'laura.diaz@centro.com', centroTrabajo: 5 },
-    { username: 'padre1', password: 'padre123', role: 'padre', name: 'Carlos Rodríguez', email: 'carlos.rodriguez@email.com' },
-    { username: 'padre2', password: 'padre123', role: 'padre', name: 'Ana Martínez', email: 'ana.martinez@email.com' }
-  ];
 
   // Dark mode effects
   useEffect(() => {
@@ -58,11 +43,8 @@ const AuthPage = ({ onLogin, onBack }) => {
 
     try {
       if (isLogin) {
-        // Proceso de login
-        const user = users.find(u => 
-          u.username === formData.username && 
-          u.password === formData.password
-        );
+        // Proceso de login usando usuariosService
+        const user = await usuariosService.validateLogin(formData.username, formData.password);
 
         if (user) {
           if (typeof onLogin === 'function') {
@@ -85,30 +67,39 @@ const AuthPage = ({ onLogin, onBack }) => {
           return;
         }
 
-        if (users.find(u => u.username === formData.username)) {
+        // Verificar si el usuario ya existe usando el servicio
+        const existingUsers = await usuariosService.getUsuarios();
+        if (existingUsers.find(u => u.username === formData.username)) {
           setError('El nombre de usuario ya existe');
           return;
         }
 
-        // Simular registro exitoso
-        const newUser = {
-          username: formData.username,
-          password: formData.password,
-          role: formData.role,
-          name: formData.name,
-          email: formData.email,
-          cedula: formData.cedula,
-          telefono: formData.telefono
-        };
+        try {
+          // Crear nuevo usuario y guardarlo usando usuariosService
+          const newUser = {
+            username: formData.username,
+            password: formData.password,
+            role: formData.role,
+            name: formData.name,
+            email: formData.email,
+            cedula: formData.cedula,
+            telefono: formData.telefono,
+            id: `user-${Date.now()}`
+          };
 
-        // En una aplicación real, aquí enviarías los datos al servidor
-        console.log('Nuevo usuario registrado:', newUser);
-        
-        // Auto-login después del registro
-        onLogin(newUser);
+          // Guardar usuario en localStorage
+          const savedUser = await usuariosService.saveUsuario(newUser);
+          
+          // Auto-login después del registro exitoso
+          onLogin(savedUser);
+        } catch (err) {
+          setError('Error al guardar el usuario. Intenta nuevamente.');
+          console.error('Error en registro:', err);
+        }
       }
     } catch (err) {
       setError('Error en el servidor. Intenta nuevamente.');
+      console.error('Error:', err);
     } finally {
       setLoading(false);
     }
@@ -119,22 +110,10 @@ const AuthPage = ({ onLogin, onBack }) => {
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Limpiar mensajes de error cuando el usuario comienza a escribir
+    setError('');
   };
 
-  const getRoleLabel = (role) => {
-    switch (role) {
-      case 'administrador':
-        return 'Administrador del Sistema - Acceso completo';
-      case 'director':
-        return 'Director de Centro - Gestiona un centro específico';
-      case 'doctor':
-        return 'Doctor/Médico - Gestiona pacientes';
-      case 'padre':
-        return 'Padre/Tutor - Ve información de sus hijos';
-      default:
-        return role;
-    }
-  };
 
   return (
     <div className="auth-page">
@@ -291,26 +270,7 @@ const AuthPage = ({ onLogin, onBack }) => {
                         />
                       </div>
                     </div>
-{/*
-                    <div className="form-group">
-                      <input
-                        type="hidden"
-                        name="role"
-                        value="padre"
-                     />
-                      <div className="role-info-box">
-                        <div className="role-info-header">
-                          <span className="role-icon">👨‍👩‍👧‍👦</span>
-                           <h4>Registro como {getRoleLabel(formData.role).split(' - ')[0]}</h4>
-                        </div>
-                        <p className="role-description">
-                          {getRoleLabel(formData.role).includes(' - ') 
-                            ? getRoleLabel(formData.role).split(' - ')[1] 
-                            : 'Al registrarte como padre o tutor, podrás gestionar la información de vacunación de tus hijos, recibir recordatorios de vacunas pendientes y acceder al historial médico.'}
-                        </p>
-                      </div>
-                    </div>
-*/}
+
                     <div className="form-row">
                       <div className="form-group">
                         <label>Usuario</label>

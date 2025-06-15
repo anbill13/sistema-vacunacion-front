@@ -1,118 +1,136 @@
-// Lista de provincias de República Dominicana
+import { jsonService } from './jsonService';
+
 export const provinciasRD = [
-  "Azua", "Baoruco", "Barahona", "Dajabón", "Distrito Nacional", "Duarte",
-  "Elías Piña", "El Seibo", "Espaillat", "Hato Mayor", "Hermanas Mirabal",
-  "Independencia", "La Altagracia", "La Romana", "La Vega", "María Trinidad Sánchez",
-  "Monseñor Nouel", "Monte Cristi", "Monte Plata", "Pedernales", "Peravia",
-  "Puerto Plata", "Samaná", "San Cristóbal", "San José de Ocoa", "San Juan",
-  "San Pedro de Macorís", "Sánchez Ramírez", "Santiago", "Santiago Rodríguez",
-  "Santo Domingo", "Valverde"
+  "Azua", "Bahoruco", "Barahona", "Dajabón", "Distrito Nacional", "Duarte", "Elías Piña",
+  "El Seibo", "Espaillat", "Hato Mayor", "Hermanas Mirabal", "Independencia", "La Altagracia",
+  "La Romana", "La Vega", "María Trinidad Sánchez", "Monseñor Nouel", "Monte Cristi",
+  "Monte Plata", "Pedernales", "Peravia", "Puerto Plata", "Samaná", "San Cristóbal",
+  "San José de Ocoa", "San Juan", "San Pedro de Macorís", "Sánchez Ramírez", "Santiago",
+  "Santiago Rodríguez", "Santo Domingo", "Valverde"
 ];
 
-// Lista de sectores comunes en República Dominicana
 export const sectoresRD = [
-  "Arroyo Hondo", "Bella Vista", "Ciudad Nueva", "Ciudad Universitaria", "El Millón",
-  "Ensanche Espaillat", "Ensanche La Fe", "Ensanche Naco", "Gazcue", "Honduras",
-  "Jardín Botánico", "La Agustina", "La Esperilla", "La Julia", "Los Cacicazgos",
-  "Los Jardines", "Los Prados", "Mata Hambre", "Mirador Norte", "Mirador Sur",
-  "Paraíso", "Piantini", "Puerto", "San Carlos", "San Diego", "San Gerónimo",
-  "San Juan Bosco", "Simón Bolívar", "Tropical", "Villa Consuelo", "Villa Francisca",
-  "Villa Juana", "Zona Colonial", "Zona Industrial", "Zona Universitaria"
+  "Salud Pública", "Privado", "ONG", "Militar", "Educativo"
 ];
 
-// Función para filtrar centros por diferentes criterios
-export const filterCentros = (centros, filterTerm, filterType) => {
-  if (!filterTerm || filterTerm.trim() === "") {
-    return centros;
-  }
+// Función para obtener datos de los centros
+export const centrosService = {
+  getCentros() {
+    const centrosBase = jsonService.getData('Centros_Vacunacion', 'GET') || [];
+    const centrosNuevos = jsonService.getData('Centros_Vacunacion', 'POST') || [];
+    const centrosActualizados = jsonService.getData('Centros_Vacunacion', 'PUT') || [];
+    const centrosEliminados = jsonService.getData('Centros_Vacunacion', 'DELETE') || [];
 
-  const term = filterTerm.toLowerCase();
+    // Combinar centros base con nuevos centros
+    let centros = [...centrosBase, ...centrosNuevos];
 
-  switch (filterType) {
-    case "provincia":
-      return centros.filter(centro => 
-        centro.direccion && centro.direccion.toLowerCase().includes(term)
-      );
-    case "sector":
-      return centros.filter(centro => 
-        centro.direccion && centro.direccion.toLowerCase().includes(term)
-      );
-    case "director":
-      return centros.filter(centro => 
-        centro.director && centro.director.toLowerCase().includes(term)
-      );
-    default:
+    // Aplicar actualizaciones
+    centros = centros.map(centro => {
+      const actualizado = centrosActualizados.find(c => c.id_centro === centro.id_centro);
+      return actualizado || centro;
+    });
+
+    // Eliminar centros marcados como eliminados
+    centros = centros.filter(centro => !centrosEliminados.includes(centro.id_centro));
+
+    return centros.sort((a, b) => a.nombre_centro.localeCompare(b.nombre_centro));
+  },
+
+  async saveCentro(centro) {
+    try {
+      if (!centro.nombre_centro || !centro.direccion) {
+        throw new Error('El nombre del centro y la dirección son obligatorios');
+      }
+
+      // Si el centro tiene ID, es una actualización
+      if (centro.id_centro) {
+        await jsonService.saveData('Centros_Vacunacion', 'PUT', {
+          ...centro,
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        // Si no tiene ID, es un nuevo centro
+        await jsonService.saveData('Centros_Vacunacion', 'POST', {
+          ...centro,
+          id_centro: `centro-${Date.now()}`,
+          created_at: new Date().toISOString()
+        });
+      }
+      return true;
+    } catch (error) {
+      console.error('Error al guardar centro:', error);
+      throw error; // Propagar el error para manejarlo en el componente
+    }
+  },
+
+  async deleteCentro(centroId) {
+    try {
+      if (!centroId) {
+        throw new Error('ID del centro es requerido');
+      }
+
+      // Verificar si el centro existe antes de eliminarlo
+      const centros = this.getCentros();
+      const centroExiste = centros.some(c => c.id_centro === centroId);
+      
+      if (!centroExiste) {
+        throw new Error('El centro no existe');
+      }
+
+      await jsonService.saveData('Centros_Vacunacion', 'DELETE', centroId);
+      return true;
+    } catch (error) {
+      console.error('Error al eliminar centro:', error);
+      throw error;
+    }
+  },
+
+  // Función para filtrar centros por diferentes criterios
+  filterCentros(centros, filterTerm, filterType) {
+    if (!filterTerm || filterTerm.trim() === "") {
       return centros;
-  }
-};
+    }
 
-// Función para obtener opciones de filtro según el tipo
-export const getFilterOptions = (filterType, centros) => {
-  switch (filterType) {
-    case "provincia":
-      return provinciasRD;
-    case "sector":
-      return sectoresRD;
-    case "director":
-      // Extraer directores únicos de los centros
-      const directores = [...new Set(
-        centros
-          .filter(centro => centro.director)
-          .map(centro => centro.director)
-      )];
-      return directores.sort();
-    default:
-      return [];
-  }
-};
+    const term = filterTerm.toLowerCase();
+    const centrosData = Array.isArray(centros) ? centros : this.getCentros();
 
-// Función para obtener estadísticas de centros
-export const getCentrosStats = (centros) => {
-  return {
-    total: centros.length,
-    conDirector: centros.filter(centro => centro.director).length,
-    sinDirector: centros.filter(centro => !centro.director).length,
-    porProvincia: provinciasRD.map(provincia => ({
-      nombre: provincia,
-      cantidad: centros.filter(centro => 
-        centro.direccion && centro.direccion.includes(provincia)
-      ).length
-    })).filter(item => item.cantidad > 0)
-  };
-};
+    switch (filterType) {
+      case "provincia":
+        return centrosData.filter(centro => 
+          centro.direccion && centro.direccion.toLowerCase().includes(term)
+        );
+      case "sector":
+        return centrosData.filter(centro => 
+          centro.direccion && centro.direccion.toLowerCase().includes(term)
+        );
+      case "director":
+        return centrosData.filter(centro => 
+          centro.director && centro.director.toLowerCase().includes(term)
+        );
+      default:
+        return centrosData;
+    }
+  },
 
-// Función para validar datos de un centro
-export const validateCentro = (centro) => {
-  const errors = {};
-  
-  if (!centro.nombre_centro) {
-    errors.nombre_centro = "El nombre del centro es requerido";
+  // Función para obtener opciones de filtro según el tipo
+  getFilterOptions(filterType, centros) {
+    const centrosData = centros || this.getCentros();
+    
+    switch (filterType) {
+      case "provincia":
+        return provinciasRD;
+      case "sector":
+        return sectoresRD;
+      case "director":
+        // Extraer directores únicos de los centros
+        const directores = [...new Set(
+          centrosData
+            .filter(centro => centro.director)
+            .map(centro => centro.director)
+        )];
+        return directores.sort();
+      default:
+        return [];
+    }
   }
-  
-  if (!centro.direccion) {
-    errors.direccion = "La dirección es requerida";
-  }
-  
-  if (!centro.telefono) {
-    errors.telefono = "El teléfono es requerido";
-  } else if (!/^\d{3}-\d{3}-\d{4}$/.test(centro.telefono)) {
-    errors.telefono = "El formato debe ser XXX-XXX-XXXX";
-  }
-  
-  if (centro.latitud && (isNaN(centro.latitud) || centro.latitud < -90 || centro.latitud > 90)) {
-    errors.latitud = "La latitud debe ser un número entre -90 y 90";
-  }
-  
-  if (centro.longitud && (isNaN(centro.longitud) || centro.longitud < -180 || centro.longitud > 180)) {
-    errors.longitud = "La longitud debe ser un número entre -180 y 180";
-  }
-  
-  if (centro.sitio_web && !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(centro.sitio_web)) {
-    errors.sitio_web = "El formato del sitio web no es válido";
-  }
-  
-  return {
-    isValid: Object.keys(errors).length === 0,
-    errors
-  };
 };

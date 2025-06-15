@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useAuth } from '../../contexts/AuthContext';  // Añadir import del contexto de autenticación
 import Button from '../ui/Button';
 import { Modal, ModalHeader, ModalBody } from '../ui/Modal';
+import { usuariosService } from '../../services/usuariosService';
+import { centrosService } from '../../services/centrosService';
+import { jsonService } from '../../services/jsonService';
 
 const AdminPage = () => {
   const { 
@@ -14,6 +18,21 @@ const AdminPage = () => {
     lotesVacunas,
     setLotesVacunas
   } = useData();
+  
+  const { currentUser } = useAuth();  // Obtener el usuario actual
+  
+  // Filtrar centros basado en el rol del usuario
+  const centrosFiltrados = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'admin') return centrosVacunacion;
+    if (currentUser.role === 'director') {
+      return centrosVacunacion.filter(centro => 
+        centro.director === currentUser.name || 
+        centro.id_centro === currentUser.centroId
+      );
+    }
+    return [];
+  }, [currentUser, centrosVacunacion]);
 
   const [activeSection, setActiveSection] = useState('centros');
   const [showAddCentroModal, setShowAddCentroModal] = useState(false);
@@ -68,6 +87,8 @@ const AdminPage = () => {
     active: true
   });
 
+  const [usuarios, setUsuarios] = useState([]);
+
   // Handlers para centros
   const handleAddCentro = () => {
     setEditingCentro(null);
@@ -107,33 +128,86 @@ const AdminPage = () => {
     });
   };
 
-  const handleCentroSubmit = (e) => {
+  const handleDeleteCentro = async (centro) => {
+    if (window.confirm(`¿Está seguro que desea eliminar el centro ${centro.nombre_centro}?`)) {
+      try {
+        await centrosService.deleteCentro(centro.id_centro);
+        
+        // Actualizar la lista de centros
+        const updatedCentros = centrosService.getCentros();
+        setCentrosVacunacion(updatedCentros);
+
+        // Si el centro tenía un director asignado, actualizar la asignación
+        if (centro.director) {
+          const directorUser = directores.find(d => d.name === centro.director);
+          if (directorUser) {
+            await usuariosService.desasignarCentroDeDirector(directorUser.id);
+            // Recargar la lista de directores
+            const usuariosActualizados = await usuariosService.getUsuarios();
+            setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
+          }
+        }
+
+        alert('Centro eliminado correctamente');
+      } catch (error) {
+        console.error('Error al eliminar centro:', error);
+        alert('Error al eliminar el centro. Por favor intente nuevamente.');
+      }
+    }
+  };
+
+  const handleSubmitCentro = async (e) => {
     e.preventDefault();
-    
-    if (editingCentro) {
-      // Actualizar centro existente
-      const updatedCentros = centrosVacunacion.map(centro => 
-        centro.id_centro === editingCentro.id_centro 
-          ? { 
-              ...centro, 
-              ...centroForm,
-              fecha_actualizacion: new Date().toISOString()
-            } 
-          : centro
-      );
-      setCentrosVacunacion(updatedCentros);
-    } else {
-      // Crear nuevo centro
+    try {
       const newCentro = {
         ...centroForm,
-        id_centro: `temp-${Math.random()}`,
-        fecha_creacion: new Date().toISOString(),
-        fecha_actualizacion: new Date().toISOString()
+        id_centro: editingCentro ? editingCentro.id_centro : undefined
       };
-      setCentrosVacunacion([...centrosVacunacion, newCentro]);
+
+      // Validaciones básicas
+      if (!newCentro.nombre_centro || !newCentro.direccion) {
+        alert('El nombre del centro y la dirección son obligatorios');
+        return;
+      }
+
+      // Guardar el centro usando el servicio
+      await centrosService.saveCentro(newCentro);
+      
+      // Actualizar la lista de centros
+      const updatedCentros = centrosService.getCentros();
+      setCentrosVacunacion(updatedCentros);
+
+      // Si hay un director asignado, actualizar la asignación en localStorage
+      if (newCentro.director) {
+        const directorUser = directores.find(d => d.name === newCentro.director);
+        if (directorUser) {
+          await usuariosService.asignarCentroADirector(directorUser.id, newCentro);
+          // Recargar la lista de directores para actualizar sus asignaciones
+          const usuariosActualizados = await usuariosService.getUsuarios();
+          setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
+        }
+      }
+
+      // Mostrar mensaje de éxito
+      alert(`Centro ${editingCentro ? 'actualizado' : 'creado'} correctamente`);
+
+      // Limpiar el formulario y cerrar el modal
+      setShowAddCentroModal(false);
+      setCentroForm({
+        nombre_centro: '',
+        nombre_corto: '',
+        direccion: '',
+        latitud: '',
+        longitud: '',
+        telefono: '',
+        director: '',
+        sitio_web: ''
+      });
+      setEditingCentro(null);
+    } catch (error) {
+      console.error('Error al guardar centro:', error);
+      alert(error.message || 'Error al guardar el centro. Por favor intente nuevamente.');
     }
-    
-    setShowAddCentroModal(false);
   };
 
   // Handlers para vacunas
@@ -302,43 +376,48 @@ const AdminPage = () => {
     setShowAddUsuarioModal(true);
   };
   
-  const toggleUsuarioStatus = (usuario) => {
-    // No permitir desactivar al administrador principal
-    if (usuario.id === 'admin') {
-      alert('No se puede desactivar al administrador principal del sistema.');
-      return;
+  const toggleUsuarioStatus = async (usuario) => {
+    try {
+      const updatedUser = {
+        ...usuario,
+        active: !usuario.active
+      };
+      
+      await usuariosService.saveUsuario(updatedUser);
+      
+      // Obtener la lista actualizada de usuarios
+      const usuariosActualizados = await usuariosService.getUsuarios();
+      setUsuarios(usuariosActualizados);
+      setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
+      
+      alert(`Usuario ${usuario.name} ${updatedUser.active ? 'activado' : 'desactivado'} correctamente`);
+    } catch (error) {
+      console.error('Error al actualizar estado del usuario:', error);
+      alert('Error al actualizar el estado del usuario');
     }
-    
-    const updatedDirectores = directores.map(dir => 
-      dir.id === usuario.id 
-        ? { ...dir, active: !dir.active } 
-        : dir
-    );
-    
-    setDirectores(updatedDirectores);
-    
-    // Mostrar mensaje de confirmación
-    const statusMessage = !usuario.active ? 'activado' : 'desactivado';
-    alert(`Usuario ${usuario.name} ${statusMessage} correctamente.`);
   };
   
-  const handleDeleteUsuario = (usuario) => {
-    // No permitir eliminar al administrador principal
-    if (usuario.id === 'admin') {
-      alert('No se puede eliminar al administrador principal del sistema.');
+  const handleDeleteUsuario = async (usuario) => {
+    if (usuario.role === 'administrador') {
+      alert('No se puede eliminar al usuario administrador');
       return;
     }
-    
-    // Pedir confirmación antes de eliminar
-    if (window.confirm(`¿Estás seguro de que deseas eliminar al usuario ${usuario.name}? Esta acción no se puede deshacer.`)) {
-      // Filtrar el usuario a eliminar
-      const updatedDirectores = directores.filter(dir => dir.id !== usuario.id);
-      
-      // Actualizar el estado
-      setDirectores(updatedDirectores);
-      
-      // Mostrar mensaje de confirmación
-      alert(`Usuario ${usuario.name} eliminado correctamente.`);
+
+    const confirmed = window.confirm(`¿Está seguro de eliminar al usuario ${usuario.name}?`);
+    if (confirmed) {
+      try {
+        await usuariosService.deleteUsuario(usuario.id);
+        
+        // Obtener la lista actualizada de usuarios
+        const usuariosActualizados = await usuariosService.getUsuarios();
+        setUsuarios(usuariosActualizados);
+        setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
+        
+        alert('Usuario eliminado correctamente');
+      } catch (error) {
+        console.error('Error al eliminar usuario:', error);
+        alert(error.message || 'Error al eliminar el usuario');
+      }
     }
   };
 
@@ -350,7 +429,7 @@ const AdminPage = () => {
     });
   };
 
-  const handleUsuarioSubmit = (e) => {
+  const handleUsuarioSubmit = async (e) => {
     e.preventDefault();
     
     // Validar que las contraseñas coincidan
@@ -358,48 +437,114 @@ const AdminPage = () => {
       alert('Las contraseñas no coinciden');
       return;
     }
-    
-    if (editingUsuario) {
-      // Actualizar usuario existente
-      const updatedDirectores = directores.map(usuario => 
-        usuario.id === editingUsuario.id 
-          ? { 
-              ...usuario, 
-              name: usuarioForm.name,
-              username: usuarioForm.username,
-              email: usuarioForm.email,
-              role: usuarioForm.role,
-              active: usuarioForm.active,
-              // Solo actualizar la contraseña si se proporcionó una nueva
-              ...(usuarioForm.password ? { password: usuarioForm.password } : {})
-            } 
-          : usuario
-      );
-      
-      // Actualizar el contexto
-      setDirectores(updatedDirectores);
-      alert(`Usuario ${usuarioForm.name} actualizado correctamente`);
-    } else {
-      // Crear nuevo usuario
-      const newUsuario = {
-        id: `user-${Math.random().toString(36).substr(2, 9)}`,
+
+    try {
+      const usuarioData = {
+        id: editingUsuario?.id,
         name: usuarioForm.name,
         username: usuarioForm.username,
         email: usuarioForm.email,
-        password: usuarioForm.password, // En una app real, esto se encriptaría en el backend
         role: usuarioForm.role,
         active: usuarioForm.active,
-        centrosAsignados: [], // Por defecto sin centros asignados
-        createdAt: new Date().toISOString()
+        centrosAsignados: editingUsuario?.centrosAsignados || [],
+        password: usuarioForm.password
       };
+
+      // Usar el servicio para guardar el usuario
+      await usuariosService.saveUsuario(usuarioData);
       
-      // Actualizar el contexto
-      setDirectores([...directores, newUsuario]);
-      alert(`Usuario ${usuarioForm.name} creado correctamente`);
+      // Obtener la lista actualizada de usuarios
+      const usuariosActualizados = await usuariosService.getUsuarios();
+      setUsuarios(usuariosActualizados);
+      setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
+
+      // Mostrar mensaje de éxito
+      alert(`Usuario ${usuarioForm.name} ${editingUsuario ? 'actualizado' : 'creado'} correctamente`);
+      
+      // Cerrar el modal y resetear el formulario
+      setShowAddUsuarioModal(false);
+      setUsuarioForm({
+        name: '',
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'director',
+        active: true
+      });
+      setEditingUsuario(null);
+    } catch (error) {
+      console.error('Error al guardar usuario:', error);
+      alert('Error al guardar el usuario. Por favor, inténtelo de nuevo.');
     }
-    
-    setShowAddUsuarioModal(false);
   };
+
+  const handleDeleteVacuna = async (vacuna) => {
+    const confirmed = window.confirm(`¿Está seguro de eliminar la vacuna ${vacuna.nombre_vacuna}?\nEsta acción no se puede deshacer y eliminará también los lotes asociados.`);
+    if (confirmed) {
+      try {
+        // Eliminar los lotes asociados a esta vacuna
+        const lotesAsociados = lotesVacunas.filter(lote => lote.id_vacuna === vacuna.id_vacuna);
+        for (const lote of lotesAsociados) {
+          await jsonService.saveData('Lotes_Vacunas', 'DELETE', { id: lote.id_lote });
+        }
+        
+        // Eliminar la vacuna
+        await jsonService.saveData('Vacunas', 'DELETE', { id: vacuna.id_vacuna });
+
+        // Actualizar el estado
+        setVacunas(prevVacunas => prevVacunas.filter(v => v.id_vacuna !== vacuna.id_vacuna));
+        setLotesVacunas(prevLotes => prevLotes.filter(l => l.id_vacuna !== vacuna.id_vacuna));
+
+        alert('Vacuna y sus lotes eliminados correctamente');
+      } catch (error) {
+        console.error('Error al eliminar la vacuna:', error);
+        alert('Error al eliminar la vacuna');
+      }
+    }
+  };
+
+  const handleDeleteLote = async (lote) => {
+    const confirmed = window.confirm(`¿Está seguro de eliminar el lote ${lote.numero_lote}?\nEsta acción no se puede deshacer.`);
+    if (confirmed) {
+      try {
+        // Eliminar el lote
+        await jsonService.saveData('Lotes_Vacunas', 'DELETE', { id: lote.id_lote });
+
+        // Actualizar el estado
+        setLotesVacunas(prevLotes => prevLotes.filter(l => l.id_lote !== lote.id_lote));
+
+        alert('Lote eliminado correctamente');
+      } catch (error) {
+        console.error('Error al eliminar el lote:', error);
+        alert('Error al eliminar el lote');
+      }
+    }
+  };
+
+  useEffect(() => {
+    // Cargar usuarios del servicio
+    const loadData = async () => {
+      const usuariosCargados = await usuariosService.getUsuarios();
+      setUsuarios(usuariosCargados);
+      setDirectores(usuariosCargados.filter(u => u.role === 'director'));
+    };
+    loadData();
+  }, [setDirectores]);
+
+  useEffect(() => {
+    // Cargar usuarios al montar el componente
+    const loadUsuarios = async () => {
+      try {
+        const usuariosCargados = await usuariosService.getUsuarios();
+        setUsuarios(usuariosCargados);
+      } catch (error) {
+        console.error('Error al cargar usuarios:', error);
+        setUsuarios([]);
+      }
+    };
+    loadUsuarios();
+  }, []);
 
   return (
     <div className="admin-page">
@@ -494,7 +639,7 @@ const AdminPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {centrosVacunacion.map(centro => (
+                    {centrosFiltrados.map(centro => (
                       <tr key={centro.id_centro}>
                         <td>
                           <div className="cell-content">
@@ -511,12 +656,22 @@ const AdminPage = () => {
                           </div>
                         </td>
                         <td>
-                          <button 
-                            className="btn-edit"
-                            onClick={() => handleEditCentro(centro)}
-                          >
-                            Editar
-                          </button>
+                          <div className="btn-group">
+                            <button 
+                              className="btn-edit"
+                              onClick={() => handleEditCentro(centro)}
+                              title="Editar centro"
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              className="btn-delete"
+                              onClick={() => handleDeleteCentro(centro)}
+                              title="Eliminar centro"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -570,12 +725,20 @@ const AdminPage = () => {
                           <span className="badge badge-info">{vacuna.dosis_requeridas}</span>
                         </td>
                         <td>
-                          <button 
-                            className="btn-edit"
-                            onClick={() => handleEditVacuna(vacuna)}
-                          >
-                            Editar
-                          </button>
+                          <div className="action-buttons">
+                            <button 
+                              className="btn-edit"
+                              onClick={() => handleEditVacuna(vacuna)}
+                            >
+                              Editar
+                            </button>
+                            <button 
+                              className="btn-delete"
+                              onClick={() => handleDeleteVacuna(vacuna)}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -652,12 +815,20 @@ const AdminPage = () => {
                             </div>
                           </td>
                           <td>
-                            <button 
-                              className="btn-edit"
-                              onClick={() => handleEditLote(lote)}
-                            >
-                             Editar
-                             </button>
+                            <div className="action-buttons">
+                              <button 
+                                className="btn-edit"
+                                onClick={() => handleEditLote(lote)}
+                              >
+                                Editar
+                              </button>
+                              <button 
+                                className="btn-delete"
+                                onClick={() => handleDeleteLote(lote)}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -742,38 +913,46 @@ const AdminPage = () => {
                         </button>
                       </td>
                     </tr>
-                    {directores.map(director => (
-                      <tr key={director.id}>
+                    {usuarios.filter(user => user.id !== 'admin-1').map(usuario => (
+                      <tr key={usuario.id}>
                         <td>
                           <div className="cell-content">
                             <span className="cell-icon">👤</span>
-                            <span>{director.name}</span>
+                            <span>{usuario.name}</span>
                           </div>
                         </td>
-                        <td>{director.username}</td>
-                        <td><span className="badge badge-info">Director</span></td>
-                        <td>{director.email}</td>
+                        <td>{usuario.username}</td>
+                        <td>
+                          <span className={`badge ${
+                            usuario.role === 'director' ? 'badge-info' :
+                            usuario.role === 'padre' ? 'badge-warning' :
+                            'badge-secondary'
+                          }`}>
+                            {usuario.role.charAt(0).toUpperCase() + usuario.role.slice(1)}
+                          </span>
+                        </td>
+                        <td>{usuario.email}</td>
                         <td>
                           <button 
-                            className={`badge ${director.active !== false ? 'badge-success' : 'badge-danger'}`}
-                            onClick={() => toggleUsuarioStatus(director)}
+                            className={`badge ${usuario.active !== false ? 'badge-success' : 'badge-danger'}`}
+                            onClick={() => toggleUsuarioStatus(usuario)}
                             style={{ cursor: 'pointer', border: 'none' }}
-                            title={director.active !== false ? 'Clic para desactivar' : 'Clic para activar'}
+                            title={usuario.active !== false ? 'Clic para desactivar' : 'Clic para activar'}
                           >
-                            {director.active !== false ? 'Activo' : 'Inactivo'}
+                            {usuario.active !== false ? 'Activo' : 'Inactivo'}
                           </button>
                         </td>
                         <td className="action-buttons">
                           <button 
                             className="btn-edit"
-                            onClick={() => handleEditUsuario(director)}
+                            onClick={() => handleEditUsuario(usuario)}
                             title="Editar usuario"
                           >
                             Editar
                           </button>
                           <button 
                             className="btn-delete"
-                            onClick={() => handleDeleteUsuario(director)}
+                            onClick={() => handleDeleteUsuario(usuario)}
                             title="Eliminar usuario"
                           >
                             Eliminar
@@ -805,7 +984,7 @@ const AdminPage = () => {
             </div>
           </ModalHeader>
           <ModalBody>
-            <form onSubmit={handleCentroSubmit}>
+            <form onSubmit={handleSubmitCentro}>
               <div className="form-row">
                 <div className="form-group">
                   <label>Nombre del Centro</label>

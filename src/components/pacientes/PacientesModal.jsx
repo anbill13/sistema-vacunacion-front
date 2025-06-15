@@ -1,29 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, ModalHeader, ModalBody } from '../ui/Modal';
 import Button from '../ui/Button';
-import { useData } from '../../contexts/DataContext';
+import { getPacientesCentro } from '../../services/pacientesService';
+import { vacunasService } from '../../services/vacunasService';
+import { jsonService } from '../../services/jsonService';
 
 const PacientesModal = ({ isOpen, onClose, centro }) => {
-  const { 
-    ninos, 
-    togglePacienteStatus, 
-    getTutorNombre, 
-    getHistorialVacunas,
-    getVacunasFaltantes
-  } = useData();
-  
   const [pacientesCentro, setPacientesCentro] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedPacienteId, setExpandedPacienteId] = useState(null);
 
+  const getHistorialVacunas = (id_niño) => {
+    return vacunasService.getHistorialVacunas(id_niño);
+  };
+
+  const getVacunasFaltantes = (id_niño) => {
+    return vacunasService.getVacunasFaltantes(id_niño);
+  };
+
+  const getTutorNombre = (id_tutor) => {
+    if (!id_tutor) return 'No especificado';
+    const tutores = jsonService.getData('Tutores', 'GET') || [];
+    const tutor = tutores.find(t => t.id_tutor === id_tutor);
+    return tutor ? tutor.nombre_completo : 'No encontrado';
+  };
+
   useEffect(() => {
     if (centro) {
-      const pacientesDelCentro = ninos.filter(
-        nino => nino.id_centro_salud === centro.id_centro
-      );
+      const pacientesDelCentro = getPacientesCentro(centro.id_centro);
       setPacientesCentro(pacientesDelCentro);
     }
-  }, [centro, ninos]);
+  }, [centro]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value.toLowerCase());
@@ -40,7 +47,16 @@ const PacientesModal = ({ isOpen, onClose, centro }) => {
 
   const handleToggleStatus = (e, pacienteId) => {
     e.stopPropagation();
-    togglePacienteStatus(pacienteId);
+    const ninos = jsonService.getData('Niños', 'GET') || [];
+    const nino = ninos.find(n => n.id_niño === pacienteId);
+    if (nino) {
+      nino.activo = !nino.activo;
+      jsonService.saveData('Niños', 'PUT', ninos);
+      // Actualizar la lista local
+      setPacientesCentro(pacientesCentro.map(p => 
+        p.id_niño === pacienteId ? {...p, activo: nino.activo} : p
+      ));
+    }
   };
 
   return (
