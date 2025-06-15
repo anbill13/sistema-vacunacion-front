@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, CardBody, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useData } from '../../contexts/DataContext';
-import { getFilterOptions } from '../../services/centrosService';
+import { centrosService } from '../../services/centrosService';
 
 // Fix for default markers in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -141,7 +140,7 @@ const PublicPage = ({ onShowAuth }) => {
                    filterType === "sector" ? "Todos los Sectores" : 
                    "Todos los Directores"}
                 </option>
-                {getFilterOptions(filterType, centrosVacunacion).map((option, index) => (
+                {centrosService.getFilterOptions(filterType, centrosVacunacion).map((option, index) => (
                   <option key={index} value={option}>
                     {option}
                   </option>

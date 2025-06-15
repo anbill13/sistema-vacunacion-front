@@ -2138,3 +2138,35 @@ body.dark-mode .form-label {
 .text-muted {
   color: var(--text-secondary);
 }
+
+.btn-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-edit,
+.btn-delete {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+}
+
+.btn-edit:hover {
+  background-color: var(--info-color);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.btn-delete {
+  color: var(--error-color);
+}
+
+.btn-delete:hover {
+  background-color: var(--error-color);
+  color: white;
+  transform: translateY(-1px);
+}

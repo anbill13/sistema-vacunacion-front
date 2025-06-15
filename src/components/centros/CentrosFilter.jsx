@@ -1,7 +1,27 @@
-import React from 'react';
-import { getFilterOptions } from '../../services/centrosService';
+import React, { useMemo } from 'react';
+import { centrosService } from '../../services/centrosService';
 
 const CentrosFilter = ({ filterType, setFilterType, filterTerm, setFilterTerm, centrosVacunacion }) => {
+  const filterTypes = useMemo(() => [
+    {
+      value: "provincia",
+      label: "Filtrar por Provincia",
+      allLabel: "Todas las Provincias"
+    },
+    {
+      value: "sector",
+      label: "Filtrar por Sector",
+      allLabel: "Todos los Sectores"
+    },
+    {
+      value: "director",
+      label: "Filtrar por Director",
+      allLabel: "Todos los Directores"
+    }
+  ], []);
+
+  const getCurrentFilterType = () => filterTypes.find(type => type.value === filterType);
+
   return (
     <div className="filter-container mb-4 p-4 border rounded-lg bg-light">
       <div className="d-flex flex-column flex-md-row gap-3">
@@ -10,12 +30,14 @@ const CentrosFilter = ({ filterType, setFilterType, filterTerm, setFilterTerm, c
           value={filterType}
           onChange={(e) => {
             setFilterType(e.target.value);
-            setFilterTerm(""); // Reset filter term when changing type
+            setFilterTerm("");
           }}
         >
-          <option value="provincia">Filtrar por Provincia</option>
-          <option value="sector">Filtrar por Sector</option>
-          <option value="director">Filtrar por Director</option>
+          {filterTypes.map(type => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
         </select>
         <select
           className="form-select"
@@ -23,11 +45,9 @@ const CentrosFilter = ({ filterType, setFilterType, filterTerm, setFilterTerm, c
           onChange={(e) => setFilterTerm(e.target.value)}
         >
           <option value="">
-            {filterType === "provincia" ? "Todas las Provincias" : 
-             filterType === "sector" ? "Todos los Sectores" : 
-             "Todos los Directores"}
+            {getCurrentFilterType()?.allLabel}
           </option>
-          {getFilterOptions(filterType, centrosVacunacion).map((option, index) => (
+          {centrosService.getFilterOptions(filterType, centrosVacunacion).map((option, index) => (
             <option key={index} value={option}>
               {option}
             </option>
