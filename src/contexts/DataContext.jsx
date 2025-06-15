@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import jsonData from '../json_prueba.json';
+import { jsonService } from '../services/jsonService';
+import { usuariosService } from '../services/usuariosService';
 
 const DataContext = createContext();
 
@@ -10,49 +11,56 @@ export const DataProvider = ({ children }) => {
   const [vacunas, setVacunas] = useState([]);
   const [lotesVacunas, setLotesVacunas] = useState([]);
   const [dosisAplicadas, setDosisAplicadas] = useState([]);
-  const [directores, setDirectores] = useState([
-    { id: 1, username: 'director1', name: 'Dr. Roberto Méndez', email: 'roberto.mendez@centros.com', centrosAsignados: [1, 2], role: 'director', active: true },
-    { id: 2, username: 'director2', name: 'Dra. Carmen Jiménez', email: 'carmen.jimenez@centros.com', centrosAsignados: [3, 4, 5], role: 'director', active: true },
-    { id: 3, username: 'director3', name: 'Dr. Luis Fernández', email: 'luis.fernandez@centro.com', centrosAsignados: [6], role: 'director', active: true }
-  ]);
+  const [directores, setDirectores] = useState([]);
 
   useEffect(() => {
-    // Cargar datos del JSON
-    const centrosGet = jsonData.Centros_Vacunacion.GET;
-    const centrosPost = jsonData.Centros_Vacunacion.POST.map((centro) => ({
-      ...centro,
-      id_centro: `temp-${Math.random()}`,
-      fecha_creacion: new Date().toISOString(),
-      fecha_actualizacion: new Date().toISOString(),
-    }));
-    const allCentros = [...centrosGet, ...centrosPost];
-    setCentrosVacunacion(allCentros);
-    
-    const ninosGet = jsonData.Niños.GET.map((nino) => ({
-      ...nino,
-      activo: nino.activo !== undefined ? nino.activo : true // Por defecto activo
-    }));
-    const ninosPost = jsonData.Niños.POST.map((nino) => ({
-      ...nino,
-      id_niño: `temp-${Math.random()}`,
-      fecha_creacion: new Date().toISOString(),
-      fecha_actualizacion: new Date().toISOString(),
-      activo: nino.activo !== undefined ? nino.activo : true // Por defecto activo
-    }));
-    setNinos([...ninosGet, ...ninosPost]);
-    
-    const tutoresGet = jsonData.Tutores.GET;
-    const tutoresPost = jsonData.Tutores.POST.map((tutor) => ({
-      ...tutor,
-      id_tutor: `temp-${Math.random()}`,
-      fecha_creacion: new Date().toISOString(),
-      fecha_actualizacion: new Date().toISOString(),
-    }));
-    setTutores([...tutoresGet, ...tutoresPost]);
-    
-    setVacunas(jsonData.Vacunas.GET);
-    setLotesVacunas(jsonData.Lotes_Vacunas.GET);
-    setDosisAplicadas(jsonData.Dosis_Aplicadas?.GET || []); // Asumiendo que existe esta sección
+    // Cargar datos usando los servicios
+    const loadData = () => {
+      try {
+        // Cargar centros
+        const centros = jsonService.getData('Centros_Vacunacion', 'GET') || [];
+        setCentrosVacunacion(centros);
+
+        // Cargar niños y configurar estado activo por defecto
+        const ninosData = jsonService.getData('Niños', 'GET') || [];
+        const ninosWithActive = ninosData.map(nino => ({
+          ...nino,
+          activo: nino.activo !== undefined ? nino.activo : true
+        }));
+        setNinos(ninosWithActive);
+
+        // Cargar tutores
+        const tutoresData = jsonService.getData('Tutores', 'GET') || [];
+        setTutores(tutoresData);
+
+        // Cargar vacunas
+        const vacunasData = jsonService.getData('Vacunas', 'GET') || [];
+        setVacunas(vacunasData);
+
+        // Cargar lotes de vacunas
+        const lotesData = jsonService.getData('Lotes_Vacunas', 'GET') || [];
+        setLotesVacunas(lotesData);
+
+        // Cargar dosis aplicadas
+        const dosisData = jsonService.getData('Dosis_Aplicadas', 'GET') || [];
+        setDosisAplicadas(dosisData);
+
+        // Cargar directores con sus centros asignados
+        const usuarios = usuariosService.getUsuarios();
+        const directoresData = usuarios
+          .filter(user => user.role === 'director')
+          .map(director => ({
+            ...director,
+            centrosAsignados: director.centrosAsignados || []
+          }));
+
+        setDirectores(directoresData);
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+      }
+    };
+
+    loadData();
   }, []);
 
   // Funciones para actualizar datos
