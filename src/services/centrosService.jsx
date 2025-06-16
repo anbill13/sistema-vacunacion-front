@@ -31,12 +31,15 @@ export const centrosService = {
       // Combinar centros base con nuevos centros
       let centros = [...centrosBase];
       
-      // Añadir centros nuevos (asegurarse de que tengan id_centro)
+      // Añadir centros nuevos (asegúrate de no duplicar si ya existe en base)
       centrosNuevos.forEach(nuevoCentro => {
         if (!nuevoCentro.id_centro) {
           nuevoCentro.id_centro = `centro-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         }
-        centros.push(nuevoCentro);
+        // Solo agrega si no existe ya en centrosBase (por id_centro)
+        if (!centros.some(c => c.id_centro === nuevoCentro.id_centro)) {
+          centros.push(nuevoCentro);
+        }
       });
       
       // Aplicar actualizaciones
@@ -73,11 +76,13 @@ export const centrosService = {
         });
       } else {
         // Si no tiene ID, es un nuevo centro
-        await jsonService.saveData('Centros_Vacunacion', 'POST', {
+        // Genera el id una sola vez y guarda solo en POST
+        const newCentro = {
           ...centro,
-          id_centro: `centro-${Date.now()}`,
+          id_centro: `centro-${Date.now()}-${Math.floor(Math.random()*10000)}`,
           created_at: new Date().toISOString()
-        });
+        };
+        await jsonService.saveData('Centros_Vacunacion', 'POST', newCentro);
       }
       return true;
     } catch (error) {

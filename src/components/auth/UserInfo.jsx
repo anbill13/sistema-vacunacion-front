@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Chip, User, Popover, PopoverTrigger, PopoverContent } from "@nextui-org/react";
-import { useData } from '../../contexts/DataContext';
+import { useData } from '../../context/DataContext';
 
 const UserInfo = ({ user, onLogout, onShowLogin }) => {
   const { centrosVacunacion } = useData();

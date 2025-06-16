@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { centrosService } from '../../services/centrosService';
 import { usuariosService } from '../../services/usuariosService';
 import CentrosFilter from './CentrosFilter';

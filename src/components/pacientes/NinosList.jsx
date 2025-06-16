@@ -1,6 +1,6 @@
 import React from "react";
 import RegistroForm from "./forms/RegistroForm";
-import { useData } from '../../contexts/DataContext';
+import { useData } from '../../context/DataContext';
 import { Card, CardBody } from "@nextui-org/react";
 
 function NinosList() {

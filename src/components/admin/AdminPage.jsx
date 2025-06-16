@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useData } from '../../contexts/DataContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import { 
   Button, 
   Card, 
@@ -65,12 +65,12 @@ const AdminPage = () => {
     setCentrosVacunacion,
     directores,
     setDirectores,
-    vacunas,
-    setVacunas,
-    lotesVacunas,
-    setLotesVacunas
   } = useData();
   
+  // Usar vacunas y lotes globales del contexto
+  const { vacunas, setVacunas, lotesVacunas, setLotesVacunas } = useData();
+  // Ya no se necesita cargar localmente, el contexto se encarga
+
   const { currentUser } = useAuth();  // Obtener el usuario actual
   
   // Filtrar centros basado en el rol del usuario
@@ -317,32 +317,28 @@ const AdminPage = () => {
     });
   };
 
-  const handleVacunaSubmit = (e) => {
+  const handleVacunaSubmit = async (e) => {
     e.preventDefault();
-    
     if (editingVacuna) {
-      // Actualizar vacuna existente
-      const updatedVacunas = vacunas.map(vacuna => 
-        vacuna.id_vacuna === editingVacuna.id_vacuna 
-          ? { 
-              ...vacuna, 
-              ...vacunaForm,
-              fecha_actualizacion: new Date().toISOString()
-            } 
-          : vacuna
-      );
-      setVacunas(updatedVacunas);
+      // Editar vacuna existente (PUT)
+      const vacunaEditada = {
+        ...vacunaForm,
+        id_vacuna: editingVacuna.id_vacuna,
+        fecha_actualizacion: new Date().toISOString()
+      };
+      await jsonService.saveData('Vacunas', vacunaEditada, 'PUT');
+      setVacunas(vacunas.map(v => v.id_vacuna === editingVacuna.id_vacuna ? vacunaEditada : v));
     } else {
-      // Crear nueva vacuna
+      // Crear nueva vacuna (POST)
       const newVacuna = {
         ...vacunaForm,
-        id_vacuna: `temp-${Math.random()}`,
+        id_vacuna: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `vacuna-${Date.now()}-${Math.floor(Math.random()*1000)}`,
         fecha_creacion: new Date().toISOString(),
         fecha_actualizacion: new Date().toISOString()
       };
+      await jsonService.saveData('Vacunas', newVacuna, 'POST');
       setVacunas([...vacunas, newVacuna]);
     }
-    
     setShowAddVacunaModal(false);
   };
 
@@ -383,32 +379,28 @@ const AdminPage = () => {
     });
   };
 
-  const handleLoteSubmit = (e) => {
+  const handleLoteSubmit = async (e) => {
     e.preventDefault();
-    
     if (editingLote) {
-      // Actualizar lote existente
-      const updatedLotes = lotesVacunas.map(lote => 
-        lote.id_lote === editingLote.id_lote 
-          ? { 
-              ...lote, 
-              ...loteForm,
-              fecha_actualizacion: new Date().toISOString()
-            } 
-          : lote
-      );
-      setLotesVacunas(updatedLotes);
+      // Editar lote existente (PUT)
+      const loteEditado = {
+        ...loteForm,
+        id_lote: editingLote.id_lote,
+        fecha_actualizacion: new Date().toISOString()
+      };
+      await jsonService.saveData('Lotes_Vacunas', loteEditado, 'PUT');
+      setLotesVacunas(lotesVacunas.map(l => l.id_lote === editingLote.id_lote ? loteEditado : l));
     } else {
-      // Crear nuevo lote
+      // Crear nuevo lote (POST)
       const newLote = {
         ...loteForm,
-        id_lote: `temp-${Math.random()}`,
+        id_lote: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `lote-${Date.now()}-${Math.floor(Math.random()*1000)}`,
         fecha_creacion: new Date().toISOString(),
         fecha_actualizacion: new Date().toISOString()
       };
+      await jsonService.saveData('Lotes_Vacunas', newLote, 'POST');
       setLotesVacunas([...lotesVacunas, newLote]);
     }
-    
     setShowAddLoteModal(false);
   };
 
@@ -421,7 +413,7 @@ const AdminPage = () => {
       email: '',
       password: '',
       confirmPassword: '',
-      role: 'director',
+      role: 'director', // Por defecto, director
       active: true
     });
     setShowAddUsuarioModal(true);
@@ -481,7 +473,7 @@ const AdminPage = () => {
         alert('Usuario eliminado correctamente');
       } catch (error) {
         console.error('Error al eliminar usuario:', error);
-        alert(error.message || 'Error al eliminar el usuario');
+        alert('Error al eliminar el usuario');
       }
     }
   };

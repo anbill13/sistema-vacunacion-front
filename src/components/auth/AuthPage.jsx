@@ -3,7 +3,7 @@ import { Card, CardBody, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
 import { usuariosService } from '../../services/usuariosService';
 
-const AuthPage = ({ onLogin, onBack }) => {
+const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [formData, setFormData] = useState({

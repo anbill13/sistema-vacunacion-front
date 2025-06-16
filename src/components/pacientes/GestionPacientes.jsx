@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import VacunacionModal from './VacunacionModal';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { 
   Button, 
   Card, 
@@ -23,7 +23,7 @@ import {
 } from "@nextui-org/react";
 import RegistroForm from './forms/RegistroForm';
 import CitaModal from './CitaModal';
-import { useData } from '../../contexts/DataContext';
+import { useData } from '../../context/DataContext';
 
 export default function GestionPacientes() {
   const { currentUser } = useAuth();
@@ -164,10 +164,15 @@ export default function GestionPacientes() {
 
   const getHistorialVacunas = (ninoId) => {
     if (!dosisAplicadas) return [];
+    console.log('[Historial Vacunas] dosisAplicadas:', dosisAplicadas);
+    console.log('[Historial Vacunas] vacunas:', vacunas);
     const dosisDelNino = dosisAplicadas.filter(d => d.id_niño === ninoId);
     return dosisDelNino.map(dosis => {
       const lote = lotesVacunas.find(l => l.id_lote === dosis.id_lote);
-      const vacuna = vacunas.find(v => v.id_vacuna === (dosis.id_vacuna || lote?.id_vacuna));
+      // Normaliza a string para comparar
+      const vacuna = vacunas.find(
+        v => String(v.id_vacuna) === String(dosis.id_vacuna || lote?.id_vacuna)
+      );
       return {
         ...dosis,
         nombre_vacuna: vacuna?.nombre_vacuna || 'Desconocida',
@@ -199,68 +204,69 @@ export default function GestionPacientes() {
             }))
             .filter(l => pacienteVacunacion && l.id_centro === pacienteVacunacion.id_centro_salud && l.cantidad_disponible > 0)
         }
-        vacunas={
-          vacunas.filter(v => {
-            // Busca si hay al menos un lote de esta vacuna en el centro del paciente y con dosis disponibles
-            return lotesVacunas.some(l =>
-              pacienteVacunacion &&
-              l.id_centro === pacienteVacunacion.id_centro_salud &&
-              l.id_vacuna === v.id_vacuna &&
-              l.cantidad_disponible > 0
-            );
-          })
-        }
+        vacunas={vacunas}
         historialVacunas={pacienteVacunacion ? getHistorialVacunas(pacienteVacunacion.id_niño) : []}
         citas={citasPaciente}
         onRegistrarVacuna={async (data) => {
-          setLoadingVacunacion(true);
-          try {
-            const { jsonService } = require('../../services/jsonService');
-            // Guardar dosis aplicada en Dosis_Aplicadas
-            const nuevaDosis = {
-              ...data,
-              id_lote: data.id_lote || null, // Asigna el lote seleccionado correctamente
-              fecha_aplicacion: new Date().toISOString(),
-            };
-            // Guardar en POST y también en GET para simular persistencia real
-            jsonService.saveData('Dosis_Aplicadas', 'POST', nuevaDosis);
-            const prevGET = jsonService.getData('Dosis_Aplicadas', 'GET') || [];
-            jsonService.saveData('Dosis_Aplicadas', 'GET', [...prevGET, nuevaDosis]);
+  setLoadingVacunacion(true);
+  try {
+    // Validar datos mínimos
+    if (!data.id_vacuna || !data.id_lote) {
+      alert('Debes seleccionar vacuna y lote.');
+      setLoadingVacunacion(false);
+      return;
+    }
+    // 1. Crear la nueva dosis
+    const nuevaDosis = {
+      ...data,
+      id_vacuna: String(data.id_vacuna),
+      id_lote: String(data.id_lote),
+      fecha_aplicacion: new Date().toISOString(),
+    };
+    // 2. Guardar en localStorage (GET y POST)
+    const { jsonService } = require('../../services/jsonService');
+    const dosisPrevias = jsonService.getData('Dosis_Aplicadas', 'GET') || [];
+    jsonService.saveData('Dosis_Aplicadas', 'GET', [...dosisPrevias, nuevaDosis]);
+    jsonService.saveData('Dosis_Aplicadas', 'POST', nuevaDosis);
+    // 3. Actualizar stock del lote
+    const lotes = jsonService.getData('Lotes_Vacunas', 'GET') || [];
+    const loteIndex = lotes.findIndex(l => String(l.id_lote) === String(data.id_lote));
+    if (loteIndex !== -1 && lotes[loteIndex].cantidad_disponible > 0) {
+      lotes[loteIndex] = {
+        ...lotes[loteIndex],
+        cantidad_disponible: lotes[loteIndex].cantidad_disponible - 1
+      };
+      jsonService.saveData('Lotes_Vacunas', 'GET', lotes);
+      jsonService.saveData('Lotes_Vacunas', 'PUT', lotes[loteIndex]);
+      setLotesVacunas([...lotes]);
+    }
+    // 4. Refrescar el estado global de dosis aplicadas
+    setDosisAplicadas(jsonService.getData('Dosis_Aplicadas', 'GET') || []);
+    // 5. Refrescar citas del paciente
+    if (pacienteVacunacion) {
+      const { getCitasVacunas } = require('../../services/pacientesService');
+      setCitasPaciente(getCitasVacunas(pacienteVacunacion.id_niño));
+    }
+  } catch (e) {
+    alert('Error al registrar la vacunación');
+    console.error('Error al registrar vacuna:', e);
+  }
+  setLoadingVacunacion(false);
+}}
 
-            // Restar dosis al lote seleccionado y actualizar en ambos métodos
-            if (nuevaDosis.id_lote) {
-              const lotes = jsonService.getData('Lotes_Vacunas', 'GET') || [];
-              const loteIndex = lotes.findIndex(l => l.id_lote === nuevaDosis.id_lote);
-              if (loteIndex !== -1 && lotes[loteIndex].cantidad_disponible > 0) {
-                lotes[loteIndex] = { ...lotes[loteIndex], cantidad_disponible: lotes[loteIndex].cantidad_disponible - 1 };
-                jsonService.saveData('Lotes_Vacunas', 'PUT', lotes[loteIndex]);
-                jsonService.saveData('Lotes_Vacunas', 'GET', lotes);
-                if (typeof setLotesVacunas === 'function') setLotesVacunas([...lotes]);
-              }
-            }
-
-            // --- Refrescar historial de dosis aplicadas tras registrar ---
-            if (pacienteVacunacion) {
-              setTimeout(() => {
-                const nuevasDosis = jsonService.getData('Dosis_Aplicadas', 'GET') || [];
-                if (typeof setDosisAplicadas === 'function') setDosisAplicadas(nuevasDosis);
-                setCitasPaciente(prev => [...prev]); // Fuerza re-render de citas
-              }, 200);
-            }
-          } catch (e) { /* Manejo de error */ }
-          setLoadingVacunacion(false);
-        }}
         onRegistrarCita={async (cita) => {
-          setLoadingVacunacion(true);
-          try {
-            const { agregarCitaVacuna, getCitasVacunas } = require('../../services/pacientesService');
-            if (pacienteVacunacion) {
-              await agregarCitaVacuna(pacienteVacunacion.id_niño, cita);
-              setCitasPaciente(getCitasVacunas(pacienteVacunacion.id_niño));
-            }
-          } catch (e) { /* Manejo de error */ }
-          setLoadingVacunacion(false);
-        }}
+  setLoadingVacunacion(true);
+  try {
+    const { agregarCitaVacuna, getCitasVacunas } = require('../../services/pacientesService');
+    if (pacienteVacunacion) {
+      await agregarCitaVacuna(pacienteVacunacion.id_niño, cita);
+      setCitasPaciente(getCitasVacunas(pacienteVacunacion.id_niño));
+    }
+    setCitaModalOpen(false);
+  } catch (e) { console.error('Error al registrar cita:', e); }
+  setLoadingVacunacion(false);
+}}
+
       />
     {/* Modal para registrar próxima cita */}
     <CitaModal

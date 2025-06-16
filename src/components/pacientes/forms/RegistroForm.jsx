@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
+
 import NinoForm from "./NinoForm";
 import PadreForm from "./PadreForm";
 import { 
   Button, 
-  Checkbox, 
-  Select, 
-  SelectItem, 
   Divider,
   Card,
   CardBody,
@@ -25,6 +23,7 @@ export default function RegistroForm({
   tutores,
   centros
 }) {
+  const [loading, setLoading] = useState(false);
   const isEditMode = !!ninoToEdit;
   const [paso, setPaso] = useState(1);
   const [formData, setFormData] = useState({
@@ -118,7 +117,9 @@ export default function RegistroForm({
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
     e.preventDefault();
     
     if (paso === 1) {
@@ -198,7 +199,8 @@ export default function RegistroForm({
       
       // Cerrar el formulario
       onClose();
-    }
+    setLoading(false);
+  };
   };
 
   const handleBack = () => {
@@ -206,7 +208,7 @@ export default function RegistroForm({
   };
 
   return (
-    <div className="space-y-4">
+    <div>
       <Tabs 
         selectedKey={paso.toString()} 
         onSelectionChange={(key) => setPaso(parseInt(key))}
@@ -238,65 +240,95 @@ export default function RegistroForm({
           isDisabled={paso < 2}
         />
       </Tabs>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         {paso === 1 ? (
-          <div className="space-y-4">
-            <h4 className="text-xl font-semibold">
-              {isEditMode ? "Editar Información del Paciente" : "Información del Paciente"}
-            </h4>
-            <NinoForm formData={formData} handleChange={handleChange} centros={centros} />
+  <div className="space-y-4">
+    <h4 className="text-xl font-semibold">
+      {isEditMode ? "Editar Información del Paciente" : "Información del Paciente"}
+    </h4>
+    <NinoForm formData={formData} handleChange={handleChange} centros={centros} />
+  </div>
+) : (
+  <div>
+    <h4 className="text-xl font-semibold">Información del Tutor</h4>
+    <Card shadow="sm">
+      <CardBody className="space-y-4">
+        <Button
+          color={usarTutorExistente ? "primary" : "default"}
+          variant="bordered"
+          onClick={() => setUsarTutorExistente(v => !v)}
+          className="mb-2"
+        >
+          El padre existe
+        </Button>
+        {usarTutorExistente ? (
+          <div>
+            <input
+              type="text"
+              placeholder="Ingrese la cédula del padre"
+              className="input input-bordered w-full mb-2"
+              value={busquedaCedula || ''}
+              onChange={e => setBusquedaCedula(e.target.value)}
+            />
+            {busquedaCedula.trim() !== '' ? (
+              <div className="space-y-2">
+                {tutoresFiltrados.filter(t => (t.identificacion || '').toLowerCase().includes(busquedaCedula.toLowerCase())).map((usuarioPadre, idx) => {
+const yaEsTutor = tutores.some(t => t.id_tutor === usuarioPadre.id_tutor);
+return (
+  <Card
+    shadow={tutorExistente === usuarioPadre.id_tutor ? "md" : "xs"}
+    className={`mb-2 cursor-pointer ${tutorExistente === usuarioPadre.id_tutor ? 'border-2 border-success-500' : ''}`}
+    key={usuarioPadre.id_tutor + '_' + idx}
+    onClick={() => setTutorExistente(usuarioPadre.id_tutor)}
+  >
+    <CardBody>
+      <div className="mb-2 font-semibold">Padre encontrado:</div>
+      <div><b>Nombre:</b> {usuarioPadre.nombre} {usuarioPadre.apellido}</div>
+      <div><b>Cédula:</b> {usuarioPadre.identificacion}</div>
+      {tutorExistente === usuarioPadre.id_tutor && (
+        <div className="text-success-600 font-bold mt-1">Seleccionado</div>
+      )}
+      <Button
+        type="button"
+        size="sm"
+        color={tutorExistente === usuarioPadre.id_tutor ? 'success' : 'primary'}
+        variant={yaEsTutor ? 'flat' : 'solid'}
+        className="ml-2 mt-2"
+        onClick={e => {
+          e.stopPropagation();
+          setTutorExistente(usuarioPadre.id_tutor);
+          if (!yaEsTutor) {
+            onTutorAdd({
+              id_tutor: usuarioPadre.id_tutor,
+              nombre: usuarioPadre.nombre,
+              apellido: usuarioPadre.apellido,
+              identificacion: usuarioPadre.identificacion,
+              telefono: usuarioPadre.telefono || '',
+              direccion: usuarioPadre.direccion || '',
+              correo: usuarioPadre.correo || '',
+            });
+          }
+        }}
+      >
+        {yaEsTutor ? (tutorExistente === usuarioPadre.id_tutor ? 'Seleccionado' : 'Seleccionar') : 'Seleccionar y agregar'}
+      </Button>
+    </CardBody>
+  </Card>
+);
+})}
+              </div>
+            ) : (
+              <div className="text-danger-500">No se encontró un padre con esa cédula.</div>
+            )}
           </div>
         ) : (
-          <div className="space-y-4">
-            <h4 className="text-xl font-semibold">Información del Tutor</h4>
-            
-            {tutores && tutores.length > 0 && (
-              <Card shadow="sm">
-                <CardBody className="space-y-4">
-                  <Checkbox
-                    isSelected={usarTutorExistente}
-                    onValueChange={setUsarTutorExistente}
-                  >
-                    Usar un tutor existente
-                  </Checkbox>
-                  
-                  {usarTutorExistente && (
-                    <>
-                      <input
-                        type="text"
-                        placeholder="Buscar por cédula"
-                        className="input input-bordered w-full mb-2"
-                        value={busquedaCedula || ''}
-                        onChange={e => setBusquedaCedula(e.target.value)}
-                      />
-                      <Select
-                        label="Seleccione un tutor"
-                        placeholder="Seleccione un tutor"
-                        selectedKeys={tutorExistente ? [tutorExistente] : []}
-                        onChange={(e) => setTutorExistente(e.target.value)}
-                        isRequired
-                      >
-                        {tutoresFiltrados.map((tutor) => (
-                          <SelectItem key={tutor.id_tutor} value={tutor.id_tutor}>
-                            {tutor.nombre} {tutor.apellido} - {tutor.identificacion}
-                          </SelectItem>
-                        ))}
-                      </Select>
-                    </>
-                   )}
-                </CardBody>
-              </Card>
-            )}
-            
-            {!usarTutorExistente && (
-              <PadreForm formData={padreData} handleChange={handlePadreChange} />
-            )}
-          </div>
+          <PadreForm formData={padreData} handleChange={handlePadreChange} />
         )}
-        
+      </CardBody>
+    </Card>
+  </div>
+)}
         <Divider />
-        
         <div className="flex justify-between">
           {paso === 2 && (
             <Button
@@ -307,24 +339,37 @@ export default function RegistroForm({
               Atrás
             </Button>
           )}
-          
           <div className="flex gap-2 ml-auto">
-            <Button
+            <Button 
               variant="flat"
               color="danger"
               onClick={onClose}
             >
               Cancelar
             </Button>
-            
-            <Button 
-              color="primary" 
-              type="submit"
-            >
-              {paso === 1 ? "Siguiente" : isEditMode ? "Guardar Cambios" : "Registrar"}
-            </Button>
+            {paso === 1 ? (
+              <Button
+                color="primary"
+                onClick={e => {
+                  e.preventDefault();
+                  setPaso(2);
+                }}
+                isDisabled={loading}
+              >
+                Siguiente
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                color="primary"
+                isDisabled={loading || (usarTutorExistente && !tutorExistente)}
+              >
+                {isEditMode ? "Guardar Cambios" : "Registrar"}
+              </Button>
+            )}
           </div>
         </div>
+
       </form>
     </div>
   );

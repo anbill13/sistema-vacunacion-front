@@ -14,13 +14,13 @@ import {
   Tab,
   Tooltip
 } from "@nextui-org/react";
-import { useData } from '../../contexts/DataContext';
+import { useData } from '../../context/DataContext';
 import { jsonService } from '../../services/jsonService.jsx';
 import { usuariosService } from '../../services/usuariosService.jsx';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 const MisCentros = () => {
-  const { centrosVacunacion } = useData();
+  const { centrosVacunacion, vacunas, lotesVacunas, setLotesVacunas } = useData();
   const { currentUser } = useAuth();
   const [centrosDirector, setCentrosDirector] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -28,20 +28,17 @@ const MisCentros = () => {
   const [doctores, setDoctores] = useState([]);
   const [checkedDoctors, setCheckedDoctors] = useState([]);
   const [centrosConDoctores, setCentrosConDoctores] = useState({});
-  
   const [activeTab, setActiveTab] = useState("vacunas");
-  const [vacunas, setVacunas] = useState([]);
-  const [lotesVacunas, setLotesVacunas] = useState([]);
-  const [showVacunaModal, setShowVacunaModal] = useState(false);
-  const [showLoteModal, setShowLoteModal] = useState(false);
-  const [editingVacuna, setEditingVacuna] = useState(null);
-  const [editingLote, setEditingLote] = useState(null);
   const [vacunaForm, setVacunaForm] = useState({
     nombre_vacuna: '', fabricante: '', tipo: '', dosis_requeridas: 1, intervalo_dosis: 0, edad_minima: 0, edad_maxima: 100, descripcion: ''
   });
   const [loteForm, setLoteForm] = useState({
     id_vacuna: '', numero_lote: '', fecha_fabricacion: '', fecha_vencimiento: '', cantidad_dosis: 0, temperatura_almacenamiento: '', id_centro: ''
   });
+  const [editingVacuna, setEditingVacuna] = useState(null);
+  const [editingLote, setEditingLote] = useState(null);
+  const [showVacunaModal, setShowVacunaModal] = useState(false);
+  const [showLoteModal, setShowLoteModal] = useState(false);
 
   // Solo los centros del director actual
   const centrosDirectorOptions = centrosDirector.map(c => ({ value: c.id_centro, label: c.nombre_centro }));
@@ -59,7 +56,7 @@ const MisCentros = () => {
   // Handlers vacuna
   const handleAddVacuna = () => {
     setEditingVacuna(null);
-    setVacunaForm({ nombre_vacuna: '', fabricante: '', tipo: '', dosis_requeridas: 1, intervalo_dosis: 0, edad_minima: 0, edad_maxima: 100, descripcion: '' });
+    setVacunaForm({ nombre_vacuna: '', fabricante: '', tipo: '', dosis_requeridas: '', intervalo_dosis: '', edad_minima: '', edad_maxima: 100, descripcion: '' });
     setShowVacunaModal(true);
   };
   const handleEditVacuna = (vac) => {
@@ -68,23 +65,42 @@ const MisCentros = () => {
     setShowVacunaModal(true);
   };
   const handleDeleteVacuna = (vac) => {
-    if(window.confirm(`¿Eliminar la vacuna ${vac.nombre_vacuna}?`)) setVacunas(vacunas.filter(v => v !== vac));
+    if(window.confirm(`¿Eliminar la vacuna ${vac.nombre_vacuna}?`)) {
+  jsonService.saveData('Vacunas', 'DELETE', { id: vac.id_vacuna });
+}
   };
   const handleVacunaFormChange = e => {
     const { name, value } = e.target;
     setVacunaForm({ ...vacunaForm, [name]: ['dosis_requeridas','intervalo_dosis','edad_minima','edad_maxima'].includes(name) ? parseInt(value,10) : value });
   };
-  const handleVacunaSubmit = e => {
+  const handleVacunaSubmit = async e => {
     e.preventDefault();
-    if(editingVacuna) setVacunas(vacunas.map(v => v === editingVacuna ? { ...vacunaForm } : v));
-    else setVacunas([...vacunas, { ...vacunaForm, id_vacuna: `temp-${Math.random()}` }]);
+    if (editingVacuna) {
+      // Editar vacuna existente (PUT)
+      const vacunaEditada = {
+        ...vacunaForm,
+        id_vacuna: editingVacuna.id_vacuna,
+        fecha_actualizacion: new Date().toISOString()
+      };
+      await jsonService.saveData('Vacunas', vacunaEditada, 'PUT');
+      
+    } else {
+      // Crear nueva vacuna (POST)
+      const newVacuna = {
+        ...vacunaForm,
+        id_vacuna: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `vacuna-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        fecha_creacion: new Date().toISOString(),
+        fecha_actualizacion: new Date().toISOString()
+      };
+      await jsonService.saveData('Vacunas', newVacuna, 'POST');
+    }
     setShowVacunaModal(false);
   };
 
   // Handlers lote
   const handleAddLote = () => {
     setEditingLote(null);
-    setLoteForm({ id_vacuna: '', numero_lote: '', fecha_fabricacion: '', fecha_vencimiento: '', cantidad_dosis: 0, temperatura_almacenamiento: '', id_centro: '' });
+    setLoteForm({ id_vacuna: '', numero_lote: '', fecha_fabricacion: '', fecha_vencimiento: '', cantidad_dosis: '', temperatura_almacenamiento: '', id_centro: '' });
     setShowLoteModal(true);
   };
   const handleEditLote = (lote) => {
@@ -93,7 +109,9 @@ const MisCentros = () => {
     setShowLoteModal(true);
   };
   const handleDeleteLote = (lote) => {
-    if(window.confirm(`¿Eliminar el lote ${lote.numero_lote}?`)) setLotesVacunas(lotesVacunas.filter(l => l !== lote));
+    if(window.confirm(`¿Eliminar el lote ${lote.numero_lote}?`)) {
+  jsonService.saveData('Lotes_Vacunas', 'DELETE', { id: lote.id_lote });
+}
   };
   const handleLoteFormChange = e => {
     const { name, value } = e.target;
@@ -106,27 +124,37 @@ const MisCentros = () => {
       const loteEditado = {
         ...loteForm,
         id_lote: editingLote.id_lote,
-        cantidad_disponible: typeof loteForm.cantidad_disponible === 'number' ? loteForm.cantidad_disponible : loteForm.cantidad_dosis
+        cantidad_disponible: typeof loteForm.cantidad_disponible === 'number' ? loteForm.cantidad_disponible : loteForm.cantidad_dosis,
+        fecha_actualizacion: new Date().toISOString()
       };
       await jsonService.saveData('Lotes_Vacunas', loteEditado, 'PUT');
-      setLotesVacunas(lotesVacunas.map(l => l === editingLote ? loteEditado : l));
     } else {
       // Crear nuevo lote (POST)
       const newLote = {
         ...loteForm,
         id_lote: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `lote-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-        cantidad_disponible: typeof loteForm.cantidad_dosis === 'number' ? loteForm.cantidad_dosis : 0
+        cantidad_disponible: typeof loteForm.cantidad_dosis === 'number' ? loteForm.cantidad_dosis : 0,
+        fecha_creacion: new Date().toISOString(),
+        fecha_actualizacion: new Date().toISOString()
       };
       await jsonService.saveData('Lotes_Vacunas', newLote, 'POST');
-      setLotesVacunas([...lotesVacunas, newLote]);
-    }
-    // Forzar recarga global si existe setLotesVacunas en contexto (hack temporal)
-    if (typeof window !== 'undefined' && window.location) {
-      setTimeout(() => window.location.reload(), 500);
+      // Recarga la lista global de lotes tras guardar
+      const lotesActualizados = [
+        ...jsonService.getData('Lotes_Vacunas', 'GET'),
+        ...jsonService.getData('Lotes_Vacunas', 'POST'),
+        ...jsonService.getData('Lotes_Vacunas', 'PUT')
+      ];
+      setLotesVacunas(
+        lotesActualizados.reduce((acc, l) => {
+          const id_lote = l?.id_lote || l?.id || `${l?.id_vacuna}_${l?.numero_lote}`;
+          if (!id_lote) return acc;
+          if (!acc.some(x => (x.id_lote || x.id) === id_lote)) acc.push({ ...l, id_lote });
+          return acc;
+        }, [])
+      );
     }
     setShowLoteModal(false);
   };
-
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'director') {
@@ -311,7 +339,7 @@ const MisCentros = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {vacunas.map(vac => (
+                    {vacunas && vacunas.map(vac => (
                       <tr key={vac.id_vacuna}>
                         <td>
                           <div className="cell-content">
@@ -558,7 +586,7 @@ const MisCentros = () => {
               <label>Vacuna</label>
               <select name="id_vacuna" value={loteForm.id_vacuna} onChange={handleLoteFormChange} className="form-control" required>
                 <option value="">Seleccione una vacuna</option>
-                {vacunas.map(v => (
+                {vacunas && vacunas.map(v => (
                   <option key={v.id_vacuna} value={v.id_vacuna}>{v.nombre_vacuna}</option>
                 ))}
               </select>

@@ -20,7 +20,7 @@ import {
   Chip
 } from "@nextui-org/react";
 import RegistroForm from './forms/RegistroForm';
-import { useData } from '../../contexts/DataContext';
+import { useData } from '../../context/DataContext';
 
 export default function SearchPatients() {
   const { 

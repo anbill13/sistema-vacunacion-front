@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { Tabs, Tab } from "@nextui-org/react";
 
 const Navigation = ({ activeTab, setActiveTab }) => {

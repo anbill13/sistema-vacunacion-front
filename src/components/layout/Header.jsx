@@ -1,6 +1,6 @@
 import React from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import UserInfo from '../auth/UserInfo';
 import { Navbar, NavbarBrand, NavbarContent, Switch } from "@nextui-org/react";
 import { SunIcon, MoonIcon } from './Icons';

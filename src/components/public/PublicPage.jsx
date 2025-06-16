@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { useData } from '../../contexts/DataContext';
+import { useData } from '../../context/DataContext';
 import { centrosService } from '../../services/centrosService';
 import { 
   Navbar, 

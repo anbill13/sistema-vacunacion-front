@@ -7,9 +7,9 @@ import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 // Contexts
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { DataProvider } from "./contexts/DataContext";
+import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { DataProvider } from "./context/DataContext";
 
 // Components
 import Header from "./components/layout/Header";
@@ -19,7 +19,6 @@ import MisCentros from "./components/centros/MisCentros";
 import GestionPacientes from "./components/pacientes/GestionPacientes";
 import PublicPage from "./components/public/PublicPage";
 import AuthPage from "./components/auth/AuthPage";
-import Login from "./components/auth/Login";
 import AdminPage from "./components/admin/AdminPage";
 import { Modal } from "./components/ui/Modal";
 
@@ -87,7 +86,8 @@ function AppContent() {
       {/* Modal de Login */}
       {showLoginModal && (
         <Modal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)}>
-          <Login 
+          <AuthPage 
+            isOpen={showLoginModal}
             onClose={() => setShowLoginModal(false)} 
             onLogin={handleLogin}
           />

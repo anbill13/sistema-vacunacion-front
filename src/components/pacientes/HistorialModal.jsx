@@ -1,5 +1,5 @@
 import React from 'react';
-import { useData } from '../../contexts/DataContext';
+import { useData } from '../../context/DataContext';
 import { Modal, ModalBody, ModalHeader, ModalFooter } from "../ui/Modal";
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "../ui/Table";
 import { Button, Chip, Divider } from "@nextui-org/react";

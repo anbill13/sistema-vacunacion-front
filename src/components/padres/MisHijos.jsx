@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardBody, Chip, Button } from "@nextui-org/react";
-import { useData } from "../../contexts/DataContext";
-import { useAuth } from "../../contexts/AuthContext";
+import { useData } from "../../context/DataContext";
+import { useAuth } from "../../context/AuthContext";
 
 function MisHijos() {
   const { ninos } = useData();
@@ -72,7 +72,7 @@ function TodasLasCitas({ nino }) {
         <li key={cita.id || idx}>
           <Chip color={new Date(cita.fecha) > new Date() ? 'primary' : 'default'} variant="flat">
             {new Date(cita.fecha).toLocaleString()} - Vacuna: {(() => {
-              const vacunas = require('../../contexts/DataContext').useData().vacunas;
+              const vacunas = require('../../context/DataContext').useData().vacunas;
               const vacuna = vacunas.find(v => v.id_vacuna === cita.vacunaId);
               return vacuna ? vacuna.nombre_vacuna : cita.vacunaId || "-";
             })()}

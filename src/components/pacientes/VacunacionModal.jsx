@@ -28,6 +28,34 @@ export default function VacunacionModal({
   const [editCitaId, setEditCitaId] = useState(null);
   const [editCitaData, setEditCitaData] = useState(null);
 
+  // Sincronización automática de vacunaId y loteId
+  React.useEffect(() => {
+    // Si el modal se abre o cambia el paciente/vacunas, resetear selección
+    if (open) {
+      if (vacunas && vacunas.length === 1) {
+        setVacunaId(vacunas[0].id_vacuna);
+      } else {
+        setVacunaId("");
+      }
+      setLoteId("");
+    }
+  }, [open, paciente, vacunas]);
+
+  // Cuando cambia la vacuna seleccionada, resetear loteId y seleccionar automáticamente si solo hay un lote
+  React.useEffect(() => {
+    if (!vacunaId) {
+      setLoteId("");
+      return;
+    }
+    const lotesFiltrados = lotesVacunas.filter(l => l.id_vacuna === vacunaId && l.cantidad_disponible > 0);
+    if (lotesFiltrados.length === 1) {
+      setLoteId(lotesFiltrados[0].id_lote);
+    } else {
+      setLoteId("");
+    }
+  }, [vacunaId, lotesVacunas]);
+
+
   // Manejo de edición de cita
   const handleEditCita = (cita) => {
     setEditCitaId(cita.id);
