@@ -9,6 +9,7 @@ export const ThemeProvider = ({ children }) => {
   });
 
   useEffect(() => {
+<<<<<<< HEAD
     // Aplicar la clase 'dark' al elemento html para NextUI
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -18,6 +19,13 @@ export const ThemeProvider = ({ children }) => {
       document.body.classList.remove('dark-mode');
     }
     
+=======
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+>>>>>>> develop
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
     // También sincronizar con la preferencia pública
     localStorage.setItem('publicDarkMode', JSON.stringify(darkMode));

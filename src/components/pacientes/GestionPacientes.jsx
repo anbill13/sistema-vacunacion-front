@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+<<<<<<< HEAD
 import { 
   Button, 
   Card, 
@@ -19,6 +20,9 @@ import {
   ModalBody, 
   Chip,
 } from "@nextui-org/react";
+=======
+import Button from '../ui/Button';
+>>>>>>> develop
 import RegistroForm from './forms/RegistroForm';
 import { useData } from '../../contexts/DataContext';
 
@@ -119,6 +123,7 @@ export default function GestionPacientes() {
   };
 
   return (
+<<<<<<< HEAD
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -182,18 +187,87 @@ export default function GestionPacientes() {
                   <Button
                     size="sm"
                     variant="flat"
+=======
+    <div className="container-fluid">
+      <div className="row mb-4">
+        <div className="col-md-8">
+          <h2>Gestión de Pacientes</h2>
+          <p className="text-muted">
+            Busca, visualiza y edita información de pacientes
+          </p>
+        </div>
+        <div className="col-md-4 text-end">
+          <Button
+            className="btn-success"
+            onClick={() => setIsModalOpen(true)}
+          >
+            + Registrar Nuevo Paciente
+          </Button>
+        </div>
+      </div>
+
+      <div className="card mb-4">
+        <div className="card-body">
+          <div className="row align-items-center">
+            <div className="col-md-3">
+              <select
+                className="form-select"
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+              >
+                <option value="nombre">Buscar por Nombre</option>
+                <option value="id">Buscar por ID</option>
+                <option value="tutor">Buscar por Tutor</option>
+              </select>
+            </div>
+            <div className="col-md-9">
+              <input
+                type="text"
+                className="form-control"
+                placeholder={`Ingrese ${
+                  filterType === "nombre"
+                    ? "nombre del paciente"
+                    : filterType === "id"
+                    ? "ID del paciente"
+                    : "nombre del tutor"
+                }`}
+                value={searchTerm}
+                onChange={handleSearch}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {searchResults.length > 0 ? (
+        <div className="search-results">
+          {searchResults.map((nino) => (
+            <div key={nino.id_niño} className="card mb-3">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">{nino.nombre_completo}</h5>
+                <div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="me-2"
+>>>>>>> develop
                     onClick={() => handleToggleExpand(nino.id_niño)}
                   >
                     {expandedNinoId === nino.id_niño ? "Ocultar" : "Ver Detalles"}
                   </Button>
                   <Button
                     size="sm"
+<<<<<<< HEAD
                     color="primary"
+=======
+                    variant="primary"
+>>>>>>> develop
                     onClick={() => handleEditNino(nino)}
                   >
                     Editar
                   </Button>
                 </div>
+<<<<<<< HEAD
               </CardHeader>
               
               {expandedNinoId === nino.id_niño && (
@@ -279,6 +353,88 @@ export default function GestionPacientes() {
           </ModalBody>
         </ModalContent>
       </Modal>
+=======
+              </div>
+              {expandedNinoId === nino.id_niño && (
+                <div className="card-body">
+                  <div className="row">
+                    <div className="col-md-6">
+                      <h6>Información Personal</h6>
+                      <p><strong>ID:</strong> {nino.id_niño}</p>
+                      <p><strong>Fecha de Nacimiento:</strong> {nino.fecha_nacimiento}</p>
+                      <p><strong>Género:</strong> {nino.genero}</p>
+                      <p><strong>Dirección:</strong> {nino.direccion_residencia}</p>
+                      <p><strong>Tutor:</strong> {getTutorNombre(nino.id_tutor)}</p>
+                      <p><strong>Centro de Salud:</strong> {getCentroNombre(nino.id_centro_salud)}</p>
+                    </div>
+                    <div className="col-md-6">
+                      <h6>Historial de Vacunación</h6>
+                      {getHistorialVacunas(nino.id_niño).length > 0 ? (
+                        <table className="table table-sm">
+                          <thead>
+                            <tr>
+                              <th>Vacuna</th>
+                              <th>Fecha</th>
+                              <th>Lote</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getHistorialVacunas(nino.id_niño).map((dosis, index) => (
+                              <tr key={index}>
+                                <td>{dosis.nombre_vacuna}</td>
+                                <td>{dosis.fecha_aplicacion}</td>
+                                <td>{dosis.numero_lote}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <p>No hay registros de vacunación</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : searchTerm.trim() !== "" ? (
+        <div className="alert alert-info">
+          No se encontraron resultados para la búsqueda.
+        </div>
+      ) : null}
+
+      {isModalOpen && (
+        <div className="modal-backdrop">
+          <div className="modal-container">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  {editingNino ? "Editar Paciente" : "Registrar Nuevo Paciente"}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={handleCloseModal}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <RegistroForm
+                  onClose={handleCloseModal}
+                  onNinoAdd={handleNinoAdd}
+                  onTutorAdd={handleTutorAdd}
+                  ninoToEdit={editingNino}
+                  onUpdateNino={handleUpdateNino}
+                  onUpdateTutor={handleUpdateTutor}
+                  tutores={tutores}
+                  centros={centrosVacunacion}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+>>>>>>> develop
     </div>
   );
 }

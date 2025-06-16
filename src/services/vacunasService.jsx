@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { jsonService } from './jsonService.jsx';
+=======
+import { jsonService } from './jsonService';
+>>>>>>> develop
 
 export const vacunasService = {
   getVacunas() {

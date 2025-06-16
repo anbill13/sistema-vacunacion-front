@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react';
 import { centrosService } from '../../services/centrosService';
+<<<<<<< HEAD
 import { Select, SelectItem } from "@nextui-org/react";
+=======
+>>>>>>> develop
 
 const CentrosFilter = ({ filterType, setFilterType, filterTerm, setFilterTerm, centrosVacunacion }) => {
   const filterTypes = useMemo(() => [
@@ -22,6 +25,7 @@ const CentrosFilter = ({ filterType, setFilterType, filterTerm, setFilterTerm, c
   ], []);
 
   const getCurrentFilterType = () => filterTypes.find(type => type.value === filterType);
+<<<<<<< HEAD
   const filterOptions = centrosService.getFilterOptions(filterType, centrosVacunacion);
 
   return (
@@ -59,6 +63,41 @@ const CentrosFilter = ({ filterType, setFilterType, filterTerm, setFilterTerm, c
           </SelectItem>
         ))}
       </Select>
+=======
+
+  return (
+    <div className="filter-container mb-4 p-4 border rounded-lg bg-light">
+      <div className="d-flex flex-column flex-md-row gap-3">
+        <select
+          className="form-select"
+          value={filterType}
+          onChange={(e) => {
+            setFilterType(e.target.value);
+            setFilterTerm("");
+          }}
+        >
+          {filterTypes.map(type => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="form-select"
+          value={filterTerm}
+          onChange={(e) => setFilterTerm(e.target.value)}
+        >
+          <option value="">
+            {getCurrentFilterType()?.allLabel}
+          </option>
+          {centrosService.getFilterOptions(filterType, centrosVacunacion).map((option, index) => (
+            <option key={index} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+>>>>>>> develop
     </div>
   );
 };

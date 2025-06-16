@@ -1,5 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+<<<<<<< HEAD
 import { jsonService } from '../services/jsonService.jsx';
+=======
+import { jsonService } from '../services/jsonService';
+>>>>>>> develop
 import { usuariosService } from '../services/usuariosService';
 
 const DataContext = createContext();

@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+<<<<<<< HEAD
 import { ModalHeader, ModalBody, ModalFooter } from '../ui/Modal';
 import { Input, Button, Card, CardBody, Chip } from "@nextui-org/react";
+=======
+import { ModalHeader, ModalBody } from '../ui/Modal';
+>>>>>>> develop
 
 const Login = ({ isOpen, onClose, onLogin }) => {
   const [credentials, setCredentials] = useState({
@@ -58,6 +62,7 @@ const Login = ({ isOpen, onClose, onLogin }) => {
   return (
     <>
       <ModalHeader>
+<<<<<<< HEAD
         Iniciar Sesión
       </ModalHeader>
       <ModalBody>
@@ -123,6 +128,74 @@ const Login = ({ isOpen, onClose, onLogin }) => {
           {loading ? 'Procesando...' : 'Iniciar Sesión'}
         </Button>
       </ModalFooter>
+=======
+        <div className="modal-header-content">
+          <h4>Iniciar Sesión</h4>
+          {onClose && (
+            <button 
+              className="modal-close-btn"
+              onClick={onClose}
+              aria-label="Cerrar modal"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </ModalHeader>
+      <ModalBody>
+        <form onSubmit={handleSubmit} className="auth-form">
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+          
+          <div className="form-group">
+            <label htmlFor="username">Usuario</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={credentials.username}
+              onChange={handleChange}
+              placeholder="Ingresa tu nombre de usuario"
+              required
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="password">Contraseña</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={credentials.password}
+              onChange={handleChange}
+              placeholder="Ingresa tu contraseña"
+              required
+            />
+          </div>
+          
+          <div className="demo-users">
+            <h4>Usuarios de prueba:</h4>
+            <div className="demo-user-list">
+              <div><strong>Admin:</strong> admin / admin123</div>
+              <div><strong>Director:</strong> director1 / director123</div>
+              <div><strong>Doctor:</strong> doctor1 / doctor123</div>
+              <div><strong>Padre:</strong> padre1 / padre123</div>
+            </div>
+          </div>
+          
+          <button 
+            type="submit" 
+            className="auth-submit-btn"
+            disabled={loading}
+          >
+            {loading ? 'Procesando...' : 'Iniciar Sesión'}
+          </button>
+        </form>
+      </ModalBody>
+>>>>>>> develop
     </>
   );
 };

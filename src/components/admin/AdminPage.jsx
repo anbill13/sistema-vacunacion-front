@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
+<<<<<<< HEAD
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   Button, 
@@ -14,10 +15,16 @@ import {
   ModalFooter,
   Tooltip
 } from "@nextui-org/react";
+=======
+import { useAuth } from '../../contexts/AuthContext';  // Añadir import del contexto de autenticación
+import Button from '../ui/Button';
+import { Modal, ModalHeader, ModalBody } from '../ui/Modal';
+>>>>>>> develop
 import { usuariosService } from '../../services/usuariosService';
 import { centrosService } from '../../services/centrosService';
 import { jsonService } from '../../services/jsonService';
 
+<<<<<<< HEAD
 // Estilos CSS para los botones flotantes
 const floatingButtonStyles = `
   .floating-action-btn {
@@ -59,6 +66,8 @@ const floatingButtonStyles = `
   }
 `;
 
+=======
+>>>>>>> develop
 const AdminPage = () => {
   const { 
     centrosVacunacion, 
@@ -76,6 +85,7 @@ const AdminPage = () => {
   // Filtrar centros basado en el rol del usuario
   const centrosFiltrados = React.useMemo(() => {
     if (!currentUser) return [];
+<<<<<<< HEAD
     
     // Para administrador o cualquier rol con acceso completo
     if (currentUser.role === 'admin' || currentUser.role === 'administrador') {
@@ -95,6 +105,15 @@ const AdminPage = () => {
       );
     }
     
+=======
+    if (currentUser.role === 'admin') return centrosVacunacion;
+    if (currentUser.role === 'director') {
+      return centrosVacunacion.filter(centro => 
+        centro.director === currentUser.name || 
+        centro.id_centro === currentUser.centroId
+      );
+    }
+>>>>>>> develop
     return [];
   }, [currentUser, centrosVacunacion]);
 
@@ -587,6 +606,7 @@ const AdminPage = () => {
   };
 
   useEffect(() => {
+<<<<<<< HEAD
     // Cargar usuarios y centros del servicio
     const loadData = async () => {
       // Cargar usuarios
@@ -601,6 +621,16 @@ const AdminPage = () => {
     };
     loadData();
   }, [setDirectores, setCentrosVacunacion]);
+=======
+    // Cargar usuarios del servicio
+    const loadData = async () => {
+      const usuariosCargados = await usuariosService.getUsuarios();
+      setUsuarios(usuariosCargados);
+      setDirectores(usuariosCargados.filter(u => u.role === 'director'));
+    };
+    loadData();
+  }, [setDirectores]);
+>>>>>>> develop
 
   useEffect(() => {
     // Cargar usuarios al montar el componente
@@ -616,6 +646,7 @@ const AdminPage = () => {
     loadUsuarios();
   }, []);
 
+<<<<<<< HEAD
   // Botón flotante para agregar nuevos elementos
 
   return (
@@ -708,6 +739,74 @@ const AdminPage = () => {
       </Tabs>
 
       <div className="space-y-4">
+=======
+  return (
+    <div className="admin-page">
+      <div className="admin-dashboard-header">
+        <div className="admin-header-content">
+          <div className="admin-title-group">
+            <h2>Panel de Administración</h2>
+            <p className="admin-subtitle">Gestiona centros, vacunas, lotes y usuarios del sistema</p>
+          </div>
+          <div className="admin-stats">
+            <div className="stat-card">
+              <div className="stat-icon">🏥</div>
+              <div className="stat-info">
+                <div className="stat-value">{centrosVacunacion.length}</div>
+                <div className="stat-label">Centros</div>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">💉</div>
+              <div className="stat-info">
+                <div className="stat-value">{vacunas.length}</div>
+                <div className="stat-label">Vacunas</div>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">📦</div>
+              <div className="stat-info">
+                <div className="stat-value">{lotesVacunas.length}</div>
+                <div className="stat-label">Lotes</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="modern-admin-tabs">
+        <button 
+          className={`modern-admin-tab ${activeSection === 'centros' ? 'active' : ''}`}
+          onClick={() => setActiveSection('centros')}
+        >
+          <span className="tab-icon">🏥</span>
+          <span className="tab-text">Centros de Vacunación</span>
+        </button>
+        <button 
+          className={`modern-admin-tab ${activeSection === 'vacunas' ? 'active' : ''}`}
+          onClick={() => setActiveSection('vacunas')}
+        >
+          <span className="tab-icon">💉</span>
+          <span className="tab-text">Vacunas</span>
+        </button>
+        <button 
+          className={`modern-admin-tab ${activeSection === 'lotes' ? 'active' : ''}`}
+          onClick={() => setActiveSection('lotes')}
+        >
+          <span className="tab-icon">📦</span>
+          <span className="tab-text">Lotes de Vacunas</span>
+        </button>
+        <button 
+          className={`modern-admin-tab ${activeSection === 'usuarios' ? 'active' : ''}`}
+          onClick={() => setActiveSection('usuarios')}
+        >
+          <span className="tab-icon">👥</span>
+          <span className="tab-text">Usuarios</span>
+        </button>
+      </div>
+
+      <div className="admin-content">
+>>>>>>> develop
         {/* Sección de Centros */}
         {activeSection === 'centros' && (
           <div className="admin-section animate-fadeIn">
@@ -752,6 +851,7 @@ const AdminPage = () => {
                           </div>
                         </td>
                         <td>
+<<<<<<< HEAD
                           <div className="relative flex gap-2">
                             <Tooltip content="Editar centro" placement="top">
                               <Button 
@@ -775,6 +875,23 @@ const AdminPage = () => {
                                 <span className="mr-1">🗑️</span> Eliminar
                               </Button>
                             </Tooltip>
+=======
+                          <div className="btn-group">
+                            <button 
+                              className="btn-edit"
+                              onClick={() => handleEditCentro(centro)}
+                              title="Editar centro"
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              className="btn-delete"
+                              onClick={() => handleDeleteCentro(centro)}
+                              title="Eliminar centro"
+                            >
+                              🗑️
+                            </button>
+>>>>>>> develop
                           </div>
                         </td>
                       </tr>
@@ -829,6 +946,7 @@ const AdminPage = () => {
                           <span className="badge badge-info">{vacuna.dosis_requeridas}</span>
                         </td>
                         <td>
+<<<<<<< HEAD
                           <div className="relative flex gap-2">
                             <Tooltip content="Editar vacuna" placement="top">
                               <Button 
@@ -852,6 +970,21 @@ const AdminPage = () => {
                                 <span className="mr-1">🗑️</span> Eliminar
                               </Button>
                             </Tooltip>
+=======
+                          <div className="action-buttons">
+                            <button 
+                              className="btn-edit"
+                              onClick={() => handleEditVacuna(vacuna)}
+                            >
+                              Editar
+                            </button>
+                            <button 
+                              className="btn-delete"
+                              onClick={() => handleDeleteVacuna(vacuna)}
+                            >
+                              Eliminar
+                            </button>
+>>>>>>> develop
                           </div>
                         </td>
                       </tr>
@@ -929,6 +1062,7 @@ const AdminPage = () => {
                             </div>
                           </td>
                           <td>
+<<<<<<< HEAD
                             <div className="relative flex gap-2">
                               <Tooltip content="Editar lote" placement="top">
                                 <Button 
@@ -952,6 +1086,21 @@ const AdminPage = () => {
                                   <span className="mr-1">🗑️</span> Eliminar
                                 </Button>
                               </Tooltip>
+=======
+                            <div className="action-buttons">
+                              <button 
+                                className="btn-edit"
+                                onClick={() => handleEditLote(lote)}
+                              >
+                                Editar
+                              </button>
+                              <button 
+                                className="btn-delete"
+                                onClick={() => handleDeleteLote(lote)}
+                              >
+                                Eliminar
+                              </button>
+>>>>>>> develop
                             </div>
                           </td>
                         </tr>
@@ -1012,6 +1161,7 @@ const AdminPage = () => {
                           Activo
                         </button>
                       </td>
+<<<<<<< HEAD
                       <td>
                         <div className="relative flex gap-2">
                           <Tooltip content="Editar administrador" placement="top">
@@ -1045,6 +1195,31 @@ const AdminPage = () => {
                             </Button>
                           </Tooltip>
                         </div>
+=======
+                      <td className="action-buttons">
+                        <button 
+                          className="btn-edit"
+                          onClick={() => handleEditUsuario({
+                            id: 'admin',
+                            name: 'Administrador Sistema',
+                            username: 'admin',
+                            email: 'admin@sistema.com',
+                            role: 'admin',
+                            active: true
+                          })}
+                          title="Editar usuario"
+                        >
+                          Editar
+                        </button>
+                        <button 
+                          className="btn-delete"
+                          disabled
+                          style={{ opacity: '0.5', cursor: 'not-allowed' }}
+                          title="El administrador principal no puede ser eliminado"
+                        >
+                          Eliminar
+                        </button>
+>>>>>>> develop
                       </td>
                     </tr>
                     {usuarios.filter(user => user.id !== 'admin-1').map(usuario => (
@@ -1076,6 +1251,7 @@ const AdminPage = () => {
                             {usuario.active !== false ? 'Activo' : 'Inactivo'}
                           </button>
                         </td>
+<<<<<<< HEAD
                         <td>
                           <div className="relative flex gap-2">
                             <Tooltip content="Editar usuario" placement="top">
@@ -1101,6 +1277,23 @@ const AdminPage = () => {
                               </Button>
                             </Tooltip>
                           </div>
+=======
+                        <td className="action-buttons">
+                          <button 
+                            className="btn-edit"
+                            onClick={() => handleEditUsuario(usuario)}
+                            title="Editar usuario"
+                          >
+                            Editar
+                          </button>
+                          <button 
+                            className="btn-delete"
+                            onClick={() => handleDeleteUsuario(usuario)}
+                            title="Eliminar usuario"
+                          >
+                            Eliminar
+                          </button>
+>>>>>>> develop
                         </td>
                       </tr>
                     ))}
@@ -1113,6 +1306,7 @@ const AdminPage = () => {
       </div>
 
       {/* Modal para añadir/editar centro */}
+<<<<<<< HEAD
       <Modal 
         isOpen={showAddCentroModal} 
         onClose={() => setShowAddCentroModal(false)}
@@ -1136,83 +1330,160 @@ const AdminPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label className="block text-sm font-medium mb-1">Nombre del Centro</label>
+=======
+      {showAddCentroModal && (
+        <Modal isOpen={showAddCentroModal} onClose={() => setShowAddCentroModal(false)}>
+          <ModalHeader>
+            <div className="modal-header-content">
+              <h4>{editingCentro ? 'Editar Centro' : 'Añadir Nuevo Centro'}</h4>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowAddCentroModal(false)}
+                aria-label="Cerrar modal"
+              >
+                ✕
+              </button>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            <form onSubmit={handleSubmitCentro}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Nombre del Centro</label>
+>>>>>>> develop
                   <input
                     type="text"
                     name="nombre_centro"
                     value={centroForm.nombre_centro}
                     onChange={handleCentroFormChange}
+<<<<<<< HEAD
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+=======
+                    className="form-control"
+>>>>>>> develop
                     required
                   />
                 </div>
                 <div className="form-group">
+<<<<<<< HEAD
                   <label className="block text-sm font-medium mb-1">Nombre Corto</label>
+=======
+                  <label>Nombre Corto</label>
+>>>>>>> develop
                   <input
                     type="text"
                     name="nombre_corto"
                     value={centroForm.nombre_corto}
                     onChange={handleCentroFormChange}
+<<<<<<< HEAD
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+=======
+                    className="form-control"
+>>>>>>> develop
                   />
                 </div>
               </div>
 
               <div className="form-group">
+<<<<<<< HEAD
                 <label className="block text-sm font-medium mb-1">Dirección</label>
+=======
+                <label>Dirección</label>
+>>>>>>> develop
                 <input
                   type="text"
                   name="direccion"
                   value={centroForm.direccion}
                   onChange={handleCentroFormChange}
+<<<<<<< HEAD
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+=======
+                  className="form-control"
+>>>>>>> develop
                   required
                 />
               </div>
 
+<<<<<<< HEAD
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label className="block text-sm font-medium mb-1">Latitud</label>
+=======
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Latitud</label>
+>>>>>>> develop
                   <input
                     type="number"
                     step="0.0001"
                     name="latitud"
                     value={centroForm.latitud}
                     onChange={handleCentroFormChange}
+<<<<<<< HEAD
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
                 <div className="form-group">
                   <label className="block text-sm font-medium mb-1">Longitud</label>
+=======
+                    className="form-control"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Longitud</label>
+>>>>>>> develop
                   <input
                     type="number"
                     step="0.0001"
                     name="longitud"
                     value={centroForm.longitud}
                     onChange={handleCentroFormChange}
+<<<<<<< HEAD
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+=======
+                    className="form-control"
+>>>>>>> develop
                   />
                 </div>
               </div>
 
+<<<<<<< HEAD
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label className="block text-sm font-medium mb-1">Teléfono</label>
+=======
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Teléfono</label>
+>>>>>>> develop
                   <input
                     type="tel"
                     name="telefono"
                     value={centroForm.telefono}
                     onChange={handleCentroFormChange}
+<<<<<<< HEAD
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+=======
+                    className="form-control"
+>>>>>>> develop
                     required
                   />
                 </div>
                 <div className="form-group">
+<<<<<<< HEAD
                   <label className="block text-sm font-medium mb-1">Director</label>
+=======
+                  <label>Director</label>
+>>>>>>> develop
                   <select
                     name="director"
                     value={centroForm.director}
                     onChange={handleCentroFormChange}
+<<<<<<< HEAD
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+=======
+                    className="form-select"
+>>>>>>> develop
                   >
                     <option value="">-- Seleccionar Director --</option>
                     {directores
@@ -1228,20 +1499,30 @@ const AdminPage = () => {
                     )}
                   </select>
                   {directores.filter(director => director.active && director.role === 'director').length === 0 && (
+<<<<<<< HEAD
                     <div className="text-warning text-xs mt-1">
                       No hay directores disponibles. Cree uno en la sección "Usuarios".
+=======
+                    <div className="form-text text-warning mt-1">
+                      <small>No hay directores disponibles. Cree uno en la sección "Usuarios".</small>
+>>>>>>> develop
                     </div>
                   )}
                 </div>
               </div>
 
               <div className="form-group">
+<<<<<<< HEAD
                 <label className="block text-sm font-medium mb-1">Sitio Web</label>
+=======
+                <label>Sitio Web</label>
+>>>>>>> develop
                 <input
                   type="url"
                   name="sitio_web"
                   value={centroForm.sitio_web}
                   onChange={handleCentroFormChange}
+<<<<<<< HEAD
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="https://..."
                 />
@@ -1291,6 +1572,46 @@ const AdminPage = () => {
                 </p>
               </ModalHeader>
             <ModalBody className="px-6">
+=======
+                  className="form-control"
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div className="form-actions">
+                <Button
+                  type="button"
+                  className="btn-secondary me-2"
+                  onClick={() => setShowAddCentroModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="btn-primary">
+                  {editingCentro ? 'Guardar Cambios' : 'Crear Centro'}
+                </Button>
+              </div>
+            </form>
+          </ModalBody>
+        </Modal>
+      )}
+
+      {/* Modal para añadir/editar vacuna */}
+      {showAddVacunaModal && (
+        <Modal isOpen={showAddVacunaModal} onClose={() => setShowAddVacunaModal(false)}>
+          <ModalHeader>
+            <div className="modal-header-content">
+              <h4>{editingVacuna ? 'Editar Vacuna' : 'Añadir Nueva Vacuna'}</h4>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowAddVacunaModal(false)}
+                aria-label="Cerrar modal"
+              >
+                ✕
+              </button>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+>>>>>>> develop
             <form onSubmit={handleVacunaSubmit}>
               <div className="form-row">
                 <div className="form-group">
@@ -1397,6 +1718,7 @@ const AdminPage = () => {
                   rows="3"
                 ></textarea>
               </div>
+<<<<<<< HEAD
             </form>
           </ModalBody>
           <ModalFooter>
@@ -1442,6 +1764,42 @@ const AdminPage = () => {
                 </p>
               </ModalHeader>
             <ModalBody className="px-6">
+=======
+
+              <div className="form-actions">
+                <Button
+                  type="button"
+                  className="btn-secondary me-2"
+                  onClick={() => setShowAddVacunaModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="btn-primary">
+                  {editingVacuna ? 'Guardar Cambios' : 'Crear Vacuna'}
+                </Button>
+              </div>
+            </form>
+          </ModalBody>
+        </Modal>
+      )}
+
+      {/* Modal para añadir/editar lote */}
+      {showAddLoteModal && (
+        <Modal isOpen={showAddLoteModal} onClose={() => setShowAddLoteModal(false)}>
+          <ModalHeader>
+            <div className="modal-header-content">
+              <h4>{editingLote ? 'Editar Lote' : 'Añadir Nuevo Lote'}</h4>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowAddLoteModal(false)}
+                aria-label="Cerrar modal"
+              >
+                ✕
+              </button>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+>>>>>>> develop
             <form onSubmit={handleLoteSubmit}>
               <div className="form-group">
                 <label>Vacuna</label>
@@ -1539,6 +1897,7 @@ const AdminPage = () => {
                   ))}
                 </select>
               </div>
+<<<<<<< HEAD
             </form>
           </ModalBody>
           <ModalFooter>
@@ -1584,6 +1943,42 @@ const AdminPage = () => {
                 </p>
               </ModalHeader>
             <ModalBody className="px-6">
+=======
+
+              <div className="form-actions">
+                <Button
+                  type="button"
+                  className="btn-secondary me-2"
+                  onClick={() => setShowAddLoteModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="btn-primary">
+                  {editingLote ? 'Guardar Cambios' : 'Crear Lote'}
+                </Button>
+              </div>
+            </form>
+          </ModalBody>
+        </Modal>
+      )}
+
+      {/* Modal para añadir/editar usuario */}
+      {showAddUsuarioModal && (
+        <Modal isOpen={showAddUsuarioModal} onClose={() => setShowAddUsuarioModal(false)}>
+          <ModalHeader>
+            <div className="modal-header-content">
+              <h4>{editingUsuario ? 'Editar Usuario' : 'Añadir Nuevo Usuario'}</h4>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowAddUsuarioModal(false)}
+                aria-label="Cerrar modal"
+              >
+                ✕
+              </button>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+>>>>>>> develop
             <form onSubmit={handleUsuarioSubmit} className="modern-form">
               <div className="form-group">
                 <label>Nombre Completo</label>
@@ -1679,6 +2074,7 @@ const AdminPage = () => {
                   </label>
                 </div>
               </div>
+<<<<<<< HEAD
             </form>
           </ModalBody>
           <ModalFooter>
@@ -1703,6 +2099,25 @@ const AdminPage = () => {
           )}
         </ModalContent>
       </Modal>
+=======
+
+              <div className="form-actions">
+                <Button
+                  type="button"
+                  className="btn-secondary me-2"
+                  onClick={() => setShowAddUsuarioModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="btn-primary">
+                  {editingUsuario ? 'Guardar Cambios' : 'Crear Usuario'}
+                </Button>
+              </div>
+            </form>
+          </ModalBody>
+        </Modal>
+      )}
+>>>>>>> develop
     </div>
   );
 };

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { jsonService } from './jsonService.jsx';
+=======
+import { jsonService } from './jsonService';
+>>>>>>> develop
 
 export const provinciasRD = [
   "Azua", "Bahoruco", "Barahona", "Dajabón", "Distrito Nacional", "Duarte", "Elías Piña",
@@ -16,6 +20,7 @@ export const sectoresRD = [
 // Función para obtener datos de los centros
 export const centrosService = {
   getCentros() {
+<<<<<<< HEAD
     try {
       // Obtener datos del JSON
       const centrosBase = jsonService.getData('Centros_Vacunacion', 'GET') || [];
@@ -57,6 +62,26 @@ export const centrosService = {
       console.error('Error al obtener centros:', error);
       return [];
     }
+=======
+    const centrosBase = jsonService.getData('Centros_Vacunacion', 'GET') || [];
+    const centrosNuevos = jsonService.getData('Centros_Vacunacion', 'POST') || [];
+    const centrosActualizados = jsonService.getData('Centros_Vacunacion', 'PUT') || [];
+    const centrosEliminados = jsonService.getData('Centros_Vacunacion', 'DELETE') || [];
+
+    // Combinar centros base con nuevos centros
+    let centros = [...centrosBase, ...centrosNuevos];
+
+    // Aplicar actualizaciones
+    centros = centros.map(centro => {
+      const actualizado = centrosActualizados.find(c => c.id_centro === centro.id_centro);
+      return actualizado || centro;
+    });
+
+    // Eliminar centros marcados como eliminados
+    centros = centros.filter(centro => !centrosEliminados.includes(centro.id_centro));
+
+    return centros.sort((a, b) => a.nombre_centro.localeCompare(b.nombre_centro));
+>>>>>>> develop
   },
 
   async saveCentro(centro) {
@@ -100,6 +125,7 @@ export const centrosService = {
         throw new Error('El centro no existe');
       }
 
+<<<<<<< HEAD
       console.log('Eliminando centro con ID:', centroId);
       
       // Pasar directamente el ID como string, no como objeto
@@ -115,6 +141,9 @@ export const centrosService = {
         console.log('Centro eliminado correctamente');
       }
       
+=======
+      await jsonService.saveData('Centros_Vacunacion', 'DELETE', centroId);
+>>>>>>> develop
       return true;
     } catch (error) {
       console.error('Error al eliminar centro:', error);
@@ -133,20 +162,29 @@ export const centrosService = {
 
     switch (filterType) {
       case "provincia":
+<<<<<<< HEAD
         // Filtramos por dirección ya que en el JSON no hay campo provincia específico
+=======
+>>>>>>> develop
         return centrosData.filter(centro => 
           centro.direccion && centro.direccion.toLowerCase().includes(term)
         );
       case "sector":
+<<<<<<< HEAD
         // Filtramos por nombre_centro ya que en el JSON no hay campo sector específico
         return centrosData.filter(centro => 
           centro.nombre_centro && centro.nombre_centro.toLowerCase().includes(term)
+=======
+        return centrosData.filter(centro => 
+          centro.direccion && centro.direccion.toLowerCase().includes(term)
+>>>>>>> develop
         );
       case "director":
         return centrosData.filter(centro => 
           centro.director && centro.director.toLowerCase().includes(term)
         );
       default:
+<<<<<<< HEAD
         // Búsqueda general en todos los campos
         return centrosData.filter(centro => 
           (centro.nombre_centro && centro.nombre_centro.toLowerCase().includes(term)) ||
@@ -154,6 +192,9 @@ export const centrosService = {
           (centro.director && centro.director.toLowerCase().includes(term)) ||
           (centro.telefono && centro.telefono.toLowerCase().includes(term))
         );
+=======
+        return centrosData;
+>>>>>>> develop
     }
   },
 

@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+<<<<<<< HEAD
     "@nextui-org/react": "^2.6.11",
     "framer-motion": "^12.18.1",
+=======
+>>>>>>> develop
     "leaflet": "^1.9.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import NinoForm from "./NinoForm";
 import PadreForm from "./PadreForm";
+<<<<<<< HEAD
 import { 
   Button, 
   Checkbox, 
@@ -12,6 +13,8 @@ import {
   Tabs,
   Tab
 } from "@nextui-org/react";
+=======
+>>>>>>> develop
 
 export default function RegistroForm({ 
   onClose, 
@@ -151,6 +154,7 @@ export default function RegistroForm({
   };
 
   return (
+<<<<<<< HEAD
     <div className="space-y-4">
       <Tabs 
         selectedKey={paso.toString()} 
@@ -223,11 +227,60 @@ export default function RegistroForm({
                   )}
                 </CardBody>
               </Card>
+=======
+    <div className="registro-form">
+      <form onSubmit={handleSubmit}>
+        {paso === 1 ? (
+          <>
+            <h4 className="mb-4">
+              {isEditMode ? "Editar Información del Paciente" : "Información del Paciente"}
+            </h4>
+            <NinoForm formData={formData} handleChange={handleChange} centros={centros} />
+          </>
+        ) : (
+          <>
+            <h4 className="mb-4">Información del Tutor</h4>
+            
+            {tutores && tutores.length > 0 && (
+              <div className="form-group mb-4">
+                <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="usarTutorExistente"
+                    checked={usarTutorExistente}
+                    onChange={(e) => setUsarTutorExistente(e.target.checked)}
+                  />
+                  <label className="form-check-label" htmlFor="usarTutorExistente">
+                    Usar un tutor existente
+                  </label>
+                </div>
+                
+                {usarTutorExistente && (
+                  <div className="mt-3">
+                    <select
+                      className="form-select"
+                      value={tutorExistente}
+                      onChange={(e) => setTutorExistente(e.target.value)}
+                      required
+                    >
+                      <option value="">Seleccione un tutor</option>
+                      {tutores.map((tutor) => (
+                        <option key={tutor.id_tutor} value={tutor.id_tutor}>
+                          {tutor.nombre} {tutor.apellido} - {tutor.identificacion}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+>>>>>>> develop
             )}
             
             {!usarTutorExistente && (
               <PadreForm formData={padreData} handleChange={handlePadreChange} />
             )}
+<<<<<<< HEAD
           </div>
         )}
         
@@ -259,6 +312,34 @@ export default function RegistroForm({
             >
               {paso === 1 ? "Siguiente" : isEditMode ? "Guardar Cambios" : "Registrar"}
             </Button>
+=======
+          </>
+        )}
+        
+        <div className="d-flex justify-content-between mt-4">
+          {paso === 2 && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleBack}
+            >
+              Atrás
+            </button>
+          )}
+          
+          <div className="ms-auto">
+            <button
+              type="button"
+              className="btn btn-outline-secondary me-2"
+              onClick={onClose}
+            >
+              Cancelar
+            </button>
+            
+            <button type="submit" className="btn btn-primary">
+              {paso === 1 ? "Siguiente" : isEditMode ? "Guardar Cambios" : "Registrar"}
+            </button>
+>>>>>>> develop
           </div>
         </div>
       </form>

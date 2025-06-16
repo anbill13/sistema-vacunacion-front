@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { centrosService } from '../../services/centrosService';
+<<<<<<< HEAD
+=======
+import { jsonService } from '../../services/jsonService';
+>>>>>>> develop
 import { usuariosService } from '../../services/usuariosService';
 import CentrosFilter from './CentrosFilter';
 import CentrosMap from './CentrosMap';
 import CentrosList from './CentrosList';
 import PacientesModal from '../pacientes/PacientesModal';
+<<<<<<< HEAD
 import { Card, CardBody, CardHeader, Divider, Spinner } from "@nextui-org/react";
+=======
+>>>>>>> develop
 
 const CentrosPage = () => {
   const { currentUser } = useAuth();
@@ -16,6 +23,7 @@ const CentrosPage = () => {
   const [filteredCentros, setFilteredCentros] = useState([]);
   const [selectedCentro, setSelectedCentro] = useState(null);
   const [showPacientesModal, setShowPacientesModal] = useState(false);
+<<<<<<< HEAD
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,6 +33,13 @@ const CentrosPage = () => {
         // Usar el servicio de centros para obtener todos los centros (incluidos los nuevos y actualizados)
         let centros = centrosService.getCentros();
         console.log('Centros cargados en CentrosPage:', centros);
+=======
+
+  useEffect(() => {
+    const loadCentros = () => {
+      try {
+        let centros = jsonService.getData('Centros_Vacunacion', 'GET') || [];
+>>>>>>> develop
         
         // Si el usuario es un director, filtrar solo sus centros asignados
         if (currentUser?.role === 'director') {
@@ -41,13 +56,22 @@ const CentrosPage = () => {
       } catch (error) {
         console.error('Error loading centros:', error);
         setCentrosVacunacion([]);
+<<<<<<< HEAD
       } finally {
         setLoading(false);
+=======
+>>>>>>> develop
       }
     };
 
     loadCentros();
   }, [currentUser]);
+<<<<<<< HEAD
+=======
+  
+  // Debug
+  console.log("CentrosPage rendered with centros:", centrosVacunacion.length);
+>>>>>>> develop
 
   useEffect(() => {
     setFilteredCentros(centrosService.filterCentros(centrosVacunacion, filterTerm, filterType));
@@ -59,15 +83,20 @@ const CentrosPage = () => {
   };
 
   const handleVerPacientes = (e, centro) => {
+<<<<<<< HEAD
     // Evitar la propagación del evento si existe el método stopPropagation
     if (e && typeof e.stopPropagation === 'function') {
       e.stopPropagation();
     }
+=======
+    e.stopPropagation();
+>>>>>>> develop
     setSelectedCentro(centro);
     setShowPacientesModal(true);
   };
 
   return (
+<<<<<<< HEAD
     <div className="space-y-6">
       <Card>
         <CardBody>
@@ -121,6 +150,33 @@ const CentrosPage = () => {
           )}
         </CardBody>
       </Card>
+=======
+    <div>
+      <CentrosFilter 
+        filterType={filterType}
+        setFilterType={setFilterType}
+        filterTerm={filterTerm}
+        setFilterTerm={setFilterTerm}
+        centrosVacunacion={centrosVacunacion}
+      />
+      
+      <CentrosMap 
+        filteredCentros={filteredCentros}
+        handleCentroClick={handleCentroClick}
+        handleVerPacientes={handleVerPacientes}
+        currentUser={currentUser}
+      />
+      
+      <div className="mt-4">
+        <h3>Listado de Centros</h3>
+        <CentrosList 
+          filteredCentros={filteredCentros}
+          handleCentroClick={handleCentroClick}
+          handleVerPacientes={handleVerPacientes}
+          currentUser={currentUser}
+        />
+      </div>
+>>>>>>> develop
 
       {/* Modal de Pacientes */}
       {showPacientesModal && selectedCentro && (
