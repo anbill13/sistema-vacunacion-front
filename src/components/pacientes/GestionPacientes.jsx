@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import VacunacionModal from './VacunacionModal';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   Button, 
   Card, 
@@ -20,28 +22,67 @@ import {
   Chip,
 } from "@nextui-org/react";
 import RegistroForm from './forms/RegistroForm';
+import CitaModal from './CitaModal';
 import { useData } from '../../contexts/DataContext';
 
 export default function GestionPacientes() {
+  const { currentUser } = useAuth();
   const { 
     ninos, 
     tutores, 
     vacunas, 
     lotesVacunas, 
+    setLotesVacunas,
     dosisAplicadas, 
+    setDosisAplicadas,
     centrosVacunacion,
     handleUpdateNino,
     handleUpdateTutor,
     handleNinoAdd,
     handleTutorAdd
   } = useData();
-  
+
+  // Utilidad: obtener los IDs de centros donde trabaja el doctor
+  const getCentrosDoctor = () => {
+    if (!currentUser || currentUser.role !== 'doctor') return [];
+    if (Array.isArray(currentUser.centrosAsignados) && currentUser.centrosAsignados.length > 0) {
+      return currentUser.centrosAsignados;
+    } else if (currentUser.id_centro) {
+      return [currentUser.id_centro];
+    }
+    return [];
+  };
+
+  // Filtrado por centro: solo el doctor ve pacientes de sus centros asignados
+  let pacientesFiltrados = ninos;
+  if (currentUser && currentUser.role === 'doctor') {
+    const centrosDoctor = getCentrosDoctor();
+    if (centrosDoctor.length > 0) {
+      pacientesFiltrados = ninos.filter(n => centrosDoctor.includes(n.id_centro_salud));
+    } else {
+      pacientesFiltrados = [];
+    }
+  }
+  // Para administrador y director, mostrar todos los pacientes (sin filtro)
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("nombre");
   const [searchResults, setSearchResults] = useState([]);
+
+  // Mostrar por default todos los niños del centro del doctor si no hay búsqueda activa
+  // Para admin y director, mostrar todos los pacientes
+  const mostrarPacientes = searchTerm.trim() === "" ? pacientesFiltrados : searchResults;
+
   const [expandedNinoId, setExpandedNinoId] = useState(null);
   const [editingNino, setEditingNino] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Estados para VacunacionModal
+  const [vacunacionModalOpen, setVacunacionModalOpen] = useState(false);
+  const [pacienteVacunacion, setPacienteVacunacion] = useState(null);
+  const [loadingVacunacion, setLoadingVacunacion] = useState(false);
+  const [citasPaciente, setCitasPaciente] = useState([]);
+  const [citaModalOpen, setCitaModalOpen] = useState(false);
 
   const handleSearch = (e) => {
     const term = e.target.value.toLowerCase();
@@ -55,12 +96,12 @@ export default function GestionPacientes() {
     let results = [];
     switch (filterType) {
       case "nombre":
-        results = ninos.filter((nino) =>
+        results = pacientesFiltrados.filter((nino) =>
           nino.nombre_completo.toLowerCase().includes(term)
         );
         break;
       case "id":
-        results = ninos.filter(
+        results = pacientesFiltrados.filter(
           (nino) => nino.id_niño.toString().includes(term)
         );
         break;
@@ -71,10 +112,19 @@ export default function GestionPacientes() {
             tutor.apellido.toLowerCase().includes(term)
         );
         const tutorIds = tutoresFiltered.map((tutor) => tutor.id_tutor);
-        results = ninos.filter((nino) => tutorIds.includes(nino.id_tutor));
+        results = pacientesFiltrados.filter((nino) => tutorIds.includes(nino.id_tutor));
         break;
       default:
         results = [];
+    }
+    // Refuerzo: nunca mostrar pacientes fuera de los centros asignados al doctor
+    if (currentUser && currentUser.role === 'doctor') {
+      const centrosDoctor = getCentrosDoctor();
+      if (centrosDoctor.length > 0) {
+        results = results.filter(n => centrosDoctor.includes(n.id_centro_salud));
+      } else {
+        results = [];
+      }
     }
 
     setSearchResults(results);
@@ -94,6 +144,19 @@ export default function GestionPacientes() {
     setEditingNino(null);
   };
 
+  // Handler para abrir el modal de vacunación
+  const handleOpenVacunacionModal = (nino) => {
+    setPacienteVacunacion(nino);
+    // Obtener citas del paciente (servicio)
+    try {
+      const { getCitasVacunas } = require('../../services/pacientesService');
+      setCitasPaciente(getCitasVacunas(nino.id_niño));
+    } catch (e) {
+      setCitasPaciente([]);
+    }
+    setVacunacionModalOpen(true);
+  };
+
   const getTutorNombre = (idTutor) => {
     const tutor = tutores.find((t) => t.id_tutor === idTutor);
     return tutor ? `${tutor.nombre} ${tutor.apellido}` : "No especificado";
@@ -104,11 +167,12 @@ export default function GestionPacientes() {
     const dosisDelNino = dosisAplicadas.filter(d => d.id_niño === ninoId);
     return dosisDelNino.map(dosis => {
       const lote = lotesVacunas.find(l => l.id_lote === dosis.id_lote);
-      const vacuna = vacunas.find(v => v.id_vacuna === lote?.id_vacuna);
+      const vacuna = vacunas.find(v => v.id_vacuna === (dosis.id_vacuna || lote?.id_vacuna));
       return {
         ...dosis,
         nombre_vacuna: vacuna?.nombre_vacuna || 'Desconocida',
-        numero_lote: lote?.numero_lote || 'N/A'
+        numero_lote: lote?.numero_lote || dosis.id_lote || 'N/A',
+        cantidad_dosis_lote: lote?.cantidad_dosis
       };
     });
   };
@@ -120,12 +184,132 @@ export default function GestionPacientes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Gestión de Pacientes</h2>
-          <p className="text-default-500">
-            Busca, visualiza y edita información de pacientes
-          </p>
+      {/* Título principal */}
+      {/* VacunacionModal */}
+      <VacunacionModal
+        open={vacunacionModalOpen}
+        onClose={() => setVacunacionModalOpen(false)}
+        paciente={pacienteVacunacion}
+        // Solo lotes y vacunas del centro del paciente y con dosis disponibles
+        lotesVacunas={
+          lotesVacunas
+            .map((l, idx) => ({
+              ...l,
+              id_lote: l.id_lote || l.id || `${l.id_vacuna}_${l.numero_lote || idx}` // Asegura id_lote único
+            }))
+            .filter(l => pacienteVacunacion && l.id_centro === pacienteVacunacion.id_centro_salud && l.cantidad_disponible > 0)
+        }
+        vacunas={
+          vacunas.filter(v => {
+            // Busca si hay al menos un lote de esta vacuna en el centro del paciente y con dosis disponibles
+            return lotesVacunas.some(l =>
+              pacienteVacunacion &&
+              l.id_centro === pacienteVacunacion.id_centro_salud &&
+              l.id_vacuna === v.id_vacuna &&
+              l.cantidad_disponible > 0
+            );
+          })
+        }
+        historialVacunas={pacienteVacunacion ? getHistorialVacunas(pacienteVacunacion.id_niño) : []}
+        citas={citasPaciente}
+        onRegistrarVacuna={async (data) => {
+          setLoadingVacunacion(true);
+          try {
+            const { jsonService } = require('../../services/jsonService');
+            // Guardar dosis aplicada en Dosis_Aplicadas
+            const nuevaDosis = {
+              ...data,
+              id_lote: data.id_lote || null, // Asigna el lote seleccionado correctamente
+              fecha_aplicacion: new Date().toISOString(),
+            };
+            // Guardar en POST y también en GET para simular persistencia real
+            jsonService.saveData('Dosis_Aplicadas', 'POST', nuevaDosis);
+            const prevGET = jsonService.getData('Dosis_Aplicadas', 'GET') || [];
+            jsonService.saveData('Dosis_Aplicadas', 'GET', [...prevGET, nuevaDosis]);
+
+            // Restar dosis al lote seleccionado y actualizar en ambos métodos
+            if (nuevaDosis.id_lote) {
+              const lotes = jsonService.getData('Lotes_Vacunas', 'GET') || [];
+              const loteIndex = lotes.findIndex(l => l.id_lote === nuevaDosis.id_lote);
+              if (loteIndex !== -1 && lotes[loteIndex].cantidad_disponible > 0) {
+                lotes[loteIndex] = { ...lotes[loteIndex], cantidad_disponible: lotes[loteIndex].cantidad_disponible - 1 };
+                jsonService.saveData('Lotes_Vacunas', 'PUT', lotes[loteIndex]);
+                jsonService.saveData('Lotes_Vacunas', 'GET', lotes);
+                if (typeof setLotesVacunas === 'function') setLotesVacunas([...lotes]);
+              }
+            }
+
+            // --- Refrescar historial de dosis aplicadas tras registrar ---
+            if (pacienteVacunacion) {
+              setTimeout(() => {
+                const nuevasDosis = jsonService.getData('Dosis_Aplicadas', 'GET') || [];
+                if (typeof setDosisAplicadas === 'function') setDosisAplicadas(nuevasDosis);
+                setCitasPaciente(prev => [...prev]); // Fuerza re-render de citas
+              }, 200);
+            }
+          } catch (e) { /* Manejo de error */ }
+          setLoadingVacunacion(false);
+        }}
+        onRegistrarCita={async (cita) => {
+          setLoadingVacunacion(true);
+          try {
+            const { agregarCitaVacuna, getCitasVacunas } = require('../../services/pacientesService');
+            if (pacienteVacunacion) {
+              await agregarCitaVacuna(pacienteVacunacion.id_niño, cita);
+              setCitasPaciente(getCitasVacunas(pacienteVacunacion.id_niño));
+            }
+          } catch (e) { /* Manejo de error */ }
+          setLoadingVacunacion(false);
+        }}
+      />
+    {/* Modal para registrar próxima cita */}
+    <CitaModal
+      open={citaModalOpen}
+      onClose={() => setCitaModalOpen(false)}
+      paciente={pacienteVacunacion}
+      vacunas={vacunas}
+      loading={loadingVacunacion}
+      onRegistrarCita={async (cita) => {
+        setLoadingVacunacion(true);
+        try {
+          const { agregarCitaVacuna, getCitasVacunas } = require('../../services/pacientesService');
+          if (pacienteVacunacion) {
+            await agregarCitaVacuna(pacienteVacunacion.id_niño, cita);
+            setCitasPaciente(getCitasVacunas(pacienteVacunacion.id_niño));
+          }
+          setCitaModalOpen(false);
+        } catch (e) { /* Manejo de error */ }
+        setLoadingVacunacion(false);
+      }}
+      onEditarCita={async (citaId, datos) => {
+        setLoadingVacunacion(true);
+        try {
+          const { editarCitaVacuna, getCitasVacunas } = require('../../services/pacientesService');
+          if (pacienteVacunacion) {
+            await editarCitaVacuna(pacienteVacunacion.id_niño, citaId, datos);
+            setCitasPaciente(getCitasVacunas(pacienteVacunacion.id_niño));
+          }
+        } catch (e) { /* Manejo de error */ }
+        setLoadingVacunacion(false);
+      }}
+      onEliminarCita={async (citaId) => {
+        setLoadingVacunacion(true);
+        try {
+          const { eliminarCitaVacuna, getCitasVacunas } = require('../../services/pacientesService');
+          if (pacienteVacunacion) {
+            await eliminarCitaVacuna(pacienteVacunacion.id_niño, citaId);
+            setCitasPaciente(getCitasVacunas(pacienteVacunacion.id_niño));
+          }
+        } catch (e) { /* Manejo de error */ }
+        setLoadingVacunacion(false);
+      }}
+    />
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <h2 className="text-2xl font-bold">Gestión de Pacientes</h2>
+        <p className="text-default-500">
+          Busca, visualiza y edita información de pacientes
+        </p>
         </div>
         <Button
           color="success"
@@ -172,9 +356,9 @@ export default function GestionPacientes() {
         </CardBody>
       </Card>
 
-      {searchResults.length > 0 ? (
+      {mostrarPacientes.length > 0 ? (
         <div className="space-y-4">
-          {searchResults.map((nino) => (
+          {mostrarPacientes.map((nino) => (
             <Card key={nino.id_niño} shadow="sm">
               <CardHeader className="flex justify-between items-center bg-primary-50 dark:bg-primary-900/20">
                 <h5 className="text-lg font-semibold">{nino.nombre_completo}</h5>
@@ -193,6 +377,16 @@ export default function GestionPacientes() {
                   >
                     Editar
                   </Button>
+                  {currentUser && ['doctor','administrador','director'].includes(currentUser.role) && (
+                    <>
+                      <Button size="sm" color="success" variant="flat" onClick={() => handleOpenVacunacionModal(nino)}>
+                        Registrar Vacunación
+                      </Button>
+                      <Button size="sm" color="secondary" variant="flat" onClick={() => { setPacienteVacunacion(nino); setCitaModalOpen(true); }}>
+                        Registrar Próxima Cita
+                      </Button>
+                    </>
+                  )}
                 </div>
               </CardHeader>
               
@@ -209,17 +403,33 @@ export default function GestionPacientes() {
                         <p><span className="font-semibold">Tutor:</span> {getTutorNombre(nino.id_tutor)}</p>
                         <p><span className="font-semibold">Centro de Salud:</span> {getCentroNombre(nino.id_centro_salud)}</p>
                       </div>
+                      {/* Próxima cita destacada */}
+                      {(() => {
+                        try {
+                          const { getCitasVacunas } = require('../../services/pacientesService');
+                          const citas = getCitasVacunas(nino.id_niño);
+                          if (Array.isArray(citas) && citas.length > 0) {
+                            const proximaCita = citas.sort((a, b) => new Date(a.fecha) - new Date(b.fecha))[0];
+                            return (
+                              <div className="mt-4 p-3 rounded-lg bg-primary-100 dark:bg-primary-900/40 border border-primary-300 dark:border-primary-700">
+                                <span className="font-semibold text-primary-800 dark:text-primary-200">Próxima cita:</span>{" "}
+                                <span className="font-medium">{new Date(proximaCita.fecha).toLocaleString()}</span>{" "}
+                                <span className="font-medium">Vacuna: {vacunas.find(v => v.id_vacuna === proximaCita.vacunaId)?.nombre_vacuna || ''}</span>
+                              </div>
+                            );
+                          } else {
+                            return null;
+                          }
+                        } catch {
+                          return null;
+                        }
+                      })()}
                     </div>
                     
                     <div>
                       <h6 className="text-md font-semibold mb-3">Historial de Vacunación</h6>
                       {getHistorialVacunas(nino.id_niño).length > 0 ? (
-                        <Table 
-                          aria-label="Historial de vacunación"
-                          isStriped
-                          isCompact
-                          removeWrapper
-                        >
+                        <Table aria-label="Historial de vacunación" isStriped isCompact removeWrapper>
                           <TableHeader>
                             <TableColumn>VACUNA</TableColumn>
                             <TableColumn>FECHA</TableColumn>
@@ -253,7 +463,15 @@ export default function GestionPacientes() {
             </Chip>
           </CardBody>
         </Card>
-      ) : null}
+      ) : currentUser && currentUser.role === 'doctor' ? (
+        <div className="text-center text-default-400 py-10">
+          No hay pacientes registrados en tu(s) centro(s) asignado(s).
+        </div>
+      ) : (
+        <div className="text-center text-default-400 py-10">
+          No hay pacientes registrados.
+        </div>
+      )}
 
       <Modal 
         isOpen={isModalOpen} 

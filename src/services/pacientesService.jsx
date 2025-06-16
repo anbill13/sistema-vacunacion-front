@@ -56,3 +56,54 @@ export const togglePacienteStatus = (pacienteId) => {
   }
   return false;
 };
+
+// --- NUEVO: Manejo de citas de vacunación ---
+
+export const getCitasVacunas = (pacienteId) => {
+  const pacientes = getAllPacientes();
+  const paciente = pacientes.find(p => p.id_niño === pacienteId);
+  return paciente && Array.isArray(paciente.citasVacunas) ? paciente.citasVacunas : [];
+};
+
+export const agregarCitaVacuna = (pacienteId, cita) => {
+  const pacientes = getAllPacientes();
+  const pacienteIndex = pacientes.findIndex(p => p.id_niño === pacienteId);
+  if (pacienteIndex !== -1) {
+    const paciente = pacientes[pacienteIndex];
+    if (!Array.isArray(paciente.citasVacunas)) paciente.citasVacunas = [];
+    const nuevaCita = { ...cita, id: Date.now().toString() };
+    paciente.citasVacunas.push(nuevaCita);
+    jsonService.saveData('Niños', 'PUT', paciente);
+    return nuevaCita;
+  }
+  return null;
+};
+
+export const editarCitaVacuna = (pacienteId, citaId, datosActualizados) => {
+  const pacientes = getAllPacientes();
+  const pacienteIndex = pacientes.findIndex(p => p.id_niño === pacienteId);
+  if (pacienteIndex !== -1) {
+    const paciente = pacientes[pacienteIndex];
+    if (!Array.isArray(paciente.citasVacunas)) paciente.citasVacunas = [];
+    const citaIndex = paciente.citasVacunas.findIndex(c => c.id === citaId);
+    if (citaIndex !== -1) {
+      paciente.citasVacunas[citaIndex] = { ...paciente.citasVacunas[citaIndex], ...datosActualizados };
+      jsonService.saveData('Niños', 'PUT', paciente);
+      return paciente.citasVacunas[citaIndex];
+    }
+  }
+  return null;
+};
+
+export const eliminarCitaVacuna = (pacienteId, citaId) => {
+  const pacientes = getAllPacientes();
+  const pacienteIndex = pacientes.findIndex(p => p.id_niño === pacienteId);
+  if (pacienteIndex !== -1) {
+    const paciente = pacientes[pacienteIndex];
+    if (!Array.isArray(paciente.citasVacunas)) paciente.citasVacunas = [];
+    paciente.citasVacunas = paciente.citasVacunas.filter(c => c.id !== citaId);
+    jsonService.saveData('Niños', 'PUT', paciente);
+    return true;
+  }
+  return false;
+};

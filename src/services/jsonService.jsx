@@ -43,11 +43,19 @@ export const jsonService = {
         jsonData[endpoint][method] = [...currentData, { ...data }];
         console.log(`Saved POST data for ${endpoint}:`, jsonData[endpoint][method]);
       }
+      // Para GET, sobrescribimos el array (simula persistencia real)
+      else if (method === 'GET') {
+        jsonData[endpoint][method] = Array.isArray(data) ? [...data] : [data];
+        console.log(`Saved GET data for ${endpoint}:`, jsonData[endpoint][method]);
+      }
       // Para PUT, actualizamos el array existente
       else if (method === 'PUT') {
         const currentData = this.getData(endpoint, method) || [];
-        // Buscar por id_centro para centros o por id para otros tipos
-        const idField = endpoint === 'Centros_Vacunacion' ? 'id_centro' : 'id';
+        // Buscar por id_lote para Lotes_Vacunas, por id_centro para Centros_Vacunacion, por id_niño para Niños, por id para otros
+        let idField = 'id';
+        if (endpoint === 'Lotes_Vacunas') idField = 'id_lote';
+        else if (endpoint === 'Centros_Vacunacion') idField = 'id_centro';
+        else if (endpoint === 'Niños') idField = 'id_niño';
         const index = currentData.findIndex(item => item[idField] === data[idField]);
         
         if (index >= 0) {

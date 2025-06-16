@@ -1,7 +1,23 @@
-import React from 'react';
-import { Button, Chip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, User } from "@nextui-org/react";
+import React, { useState } from 'react';
+import { Button, Chip, User, Popover, PopoverTrigger, PopoverContent } from "@nextui-org/react";
+import { useData } from '../../contexts/DataContext';
 
 const UserInfo = ({ user, onLogout, onShowLogin }) => {
+  const { centrosVacunacion } = useData();
+
+  // Centros donde trabaja el doctor (puede ser uno o varios)
+  // Detecta todos los centros asignados correctamente
+  let centrosDelDoctor = [];
+  if (user && user.role === 'doctor') {
+    if (Array.isArray(user.centrosAsignados) && user.centrosAsignados.length > 0) {
+      centrosDelDoctor = centrosVacunacion.filter(c => user.centrosAsignados.includes(c.id_centro));
+    } else if (user.id_centro) {
+      centrosDelDoctor = centrosVacunacion.filter(c => String(c.id_centro) === String(user.id_centro));
+    }
+  }
+
+  const [centrosPopoverOpen, setCentrosPopoverOpen] = useState(false);
+
   const getRoleIcon = (role) => {
     switch (role) {
       case 'administrador':
@@ -55,37 +71,54 @@ const UserInfo = ({ user, onLogout, onShowLogin }) => {
   }
 
   return (
-    <Dropdown placement="bottom-end">
-      <DropdownTrigger>
-        <User
-          as="button"
-          name={user.name}
-          description={
-            <Chip
-              color={getRoleColor(user.role)}
-              variant="flat"
-              startContent={<span className="mr-1">{getRoleIcon(user.role)}</span>}
-              size="sm"
-            >
-              {getRoleLabel(user.role)}
-            </Chip>
-          }
-          avatarProps={{
-            src: user.avatar,
-            name: user.name.charAt(0).toUpperCase(),
-            color: getRoleColor(user.role),
-          }}
-          className="transition-transform cursor-pointer"
-        />
-      </DropdownTrigger>
-      <DropdownMenu aria-label="Acciones de usuario">
-        <DropdownItem key="profile">Mi Perfil</DropdownItem>
-        <DropdownItem key="settings">Configuración</DropdownItem>
-        <DropdownItem key="logout" color="danger" onClick={onLogout}>
-          Cerrar Sesión
-        </DropdownItem>
-      </DropdownMenu>
-    </Dropdown>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <User
+        name={user.name}
+        description={
+          <Chip
+            color={getRoleColor(user.role)}
+            variant="flat"
+            startContent={<span className="mr-1">{getRoleIcon(user.role)}</span>}
+            size="sm"
+          >
+            {getRoleLabel(user.role)}
+          </Chip>
+        }
+        avatarProps={{
+          src: user.avatar,
+          name: user.name.charAt(0).toUpperCase(),
+          color: getRoleColor(user.role),
+        }}
+        className="transition-transform"
+      />
+      <Button color="danger" variant="flat" onClick={onLogout} size="sm">
+        Cerrar Sesión
+      </Button>
+    {/* Botón para ver centros donde trabaja el doctor */}
+    {user && user.role === 'doctor' && (
+      <Popover isOpen={centrosPopoverOpen} onOpenChange={setCentrosPopoverOpen} placement="bottom">
+        <PopoverTrigger>
+          <Button color="primary" variant="flat" size="sm">
+            Ver centros donde trabajo
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="p-4 min-w-[250px]">
+          <div className="font-bold mb-2">Centros donde trabajas</div>
+          {centrosDelDoctor.length === 0 ? (
+            <p className="text-default-500">No tienes centros asignados.</p>
+          ) : (
+            <ul className="list-disc ml-6">
+              {centrosDelDoctor.map(centro => (
+                <li key={centro.id_centro}>
+                  <span className="font-semibold">{centro.nombre_centro}</span> <span className="text-default-400">({centro.direccion})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </PopoverContent>
+      </Popover>
+    )}
+  </div>
   );
 };
 

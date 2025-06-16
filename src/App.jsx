@@ -76,6 +76,12 @@ function AppContent() {
         {activeTab === "admin" && (
           <AdminPage />
         )}
+
+        {activeTab === "mis-hijos" && (
+          <React.Suspense fallback={<div>Cargando...</div>}>
+            {require("./components/padres/MisHijos").default()}
+          </React.Suspense>
+        )}
       </div>
 
       {/* Modal de Login */}

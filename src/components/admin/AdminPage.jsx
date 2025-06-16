@@ -78,7 +78,7 @@ const AdminPage = () => {
     if (!currentUser) return [];
     
     // Para administrador o cualquier rol con acceso completo
-    if (currentUser.role === 'admin' || currentUser.role === 'administrador') {
+    if (currentUser.role === 'admin' || currentUser.role === 'administrador' || currentUser.role === 'director') {
       console.log('Admin user, showing all centers:', centrosVacunacion);
       return centrosVacunacion;
     }
@@ -152,6 +152,7 @@ const AdminPage = () => {
   });
 
   const [usuarios, setUsuarios] = useState([]);
+  
 
   // Handlers para centros
   const handleAddCentro = () => {
@@ -593,6 +594,7 @@ const AdminPage = () => {
       const usuariosCargados = await usuariosService.getUsuarios();
       setUsuarios(usuariosCargados);
       setDirectores(usuariosCargados.filter(u => u.role === 'director'));
+      // setDoctores(usuariosCargados.filter(u => u.role === 'doctor' && u.active));
       
       // Cargar centros usando el servicio de centros
       const centrosCargados = centrosService.getCentros();
@@ -1663,8 +1665,8 @@ const AdminPage = () => {
                     required
                   >
                     <option value="director">Director</option>
+                    <option value="doctor">Doctor</option>
                     <option value="admin">Administrador</option>
-                    <option value="staff">Personal</option>
                   </select>
                 </div>
                 <div className="form-group checkbox-group">

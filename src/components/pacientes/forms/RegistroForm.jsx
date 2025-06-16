@@ -13,6 +13,8 @@ import {
   Tab
 } from "@nextui-org/react";
 
+import { usuariosService } from '../../../services/usuariosService';
+
 export default function RegistroForm({ 
   onClose, 
   onNinoAdd, 
@@ -47,6 +49,34 @@ export default function RegistroForm({
   });
   const [tutorExistente, setTutorExistente] = useState("");
   const [usarTutorExistente, setUsarTutorExistente] = useState(false);
+  const [busquedaCedula, setBusquedaCedula] = useState("");
+  const [tutoresFiltrados, setTutoresFiltrados] = useState([]);
+  
+  // Combinar tutores locales + usuarios con rol padre
+  useEffect(() => {
+    let padresUsuarios = [];
+    try {
+      padresUsuarios = usuariosService.getUsuarios().filter(u => u.role === 'padre');
+    } catch(e) {}
+    // Unificar por id_tutor (para evitar duplicados si algún padre ya está en tutores)
+    const todosTutores = [
+      ...tutores,
+      ...padresUsuarios.filter(padre => !tutores.some(t => t.id_tutor === padre.id))
+        .map(padre => ({
+          id_tutor: padre.id,
+          nombre: padre.name || padre.nombre || '',
+          apellido: padre.apellido || '',
+          identificacion: padre.identificacion || padre.cedula || padre.username || padre.email || padre.correo || '',
+        }))
+    ];
+    // Filtro por cédula
+    const filtrados = busquedaCedula.trim() === ''
+      ? todosTutores
+      : todosTutores.filter(tutor =>
+          (tutor.identificacion || '').toLowerCase().includes(busquedaCedula.toLowerCase())
+        );
+    setTutoresFiltrados(filtrados);
+  }, [busquedaCedula, tutores, isEditMode]);
 
   // Cargar datos si estamos en modo edición
   useEffect(() => {
@@ -97,11 +127,36 @@ export default function RegistroForm({
     } else {
       // Procesar el formulario completo
       if (isEditMode) {
-        // Actualizar niño existente
+        // --- Nueva lógica: asegurar que el tutor seleccionado esté en la lista de tutores ---
+        let tutorIdToUse = ninoToEdit.id_tutor;
+        if (usarTutorExistente) {
+          tutorIdToUse = tutorExistente;
+          // Verificar si el tutor existe en la lista de tutores
+          const tutorYaExiste = tutores.some(t => t.id_tutor === tutorExistente);
+          if (!tutorYaExiste) {
+            // Buscar en usuariosService
+            const usuariosPadres = usuariosService.getUsuarios().filter(u => u.role === 'padre');
+            const padreSeleccionado = usuariosPadres.find(u => u.id === tutorExistente);
+            if (padreSeleccionado) {
+              // Mapear campos relevantes al formato de tutor
+              const nuevoTutor = {
+                id_tutor: padreSeleccionado.id,
+                nombre: padreSeleccionado.name || padreSeleccionado.nombre || '',
+                apellido: padreSeleccionado.apellido || '',
+                identificacion: padreSeleccionado.identificacion || padreSeleccionado.cedula || padreSeleccionado.username || padreSeleccionado.email || padreSeleccionado.correo || '',
+                // Puedes añadir otros campos relevantes aquí si es necesario
+                fecha_creacion: new Date().toISOString(),
+                fecha_actualizacion: new Date().toISOString(),
+              };
+              onTutorAdd(nuevoTutor);
+            }
+          }
+        }
+        // Actualizar niño existente con el tutor correcto
         const updatedNino = {
           ...ninoToEdit,
           ...formData,
-          id_tutor: usarTutorExistente ? tutorExistente : ninoToEdit.id_tutor,
+          id_tutor: tutorIdToUse,
           fecha_actualizacion: new Date().toISOString(),
         };
         onUpdateNino(updatedNino);
@@ -207,20 +262,29 @@ export default function RegistroForm({
                   </Checkbox>
                   
                   {usarTutorExistente && (
-                    <Select
-                      label="Seleccione un tutor"
-                      placeholder="Seleccione un tutor"
-                      selectedKeys={tutorExistente ? [tutorExistente] : []}
-                      onChange={(e) => setTutorExistente(e.target.value)}
-                      isRequired
-                    >
-                      {tutores.map((tutor) => (
-                        <SelectItem key={tutor.id_tutor} value={tutor.id_tutor}>
-                          {tutor.nombre} {tutor.apellido} - {tutor.identificacion}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  )}
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Buscar por cédula"
+                        className="input input-bordered w-full mb-2"
+                        value={busquedaCedula || ''}
+                        onChange={e => setBusquedaCedula(e.target.value)}
+                      />
+                      <Select
+                        label="Seleccione un tutor"
+                        placeholder="Seleccione un tutor"
+                        selectedKeys={tutorExistente ? [tutorExistente] : []}
+                        onChange={(e) => setTutorExistente(e.target.value)}
+                        isRequired
+                      >
+                        {tutoresFiltrados.map((tutor) => (
+                          <SelectItem key={tutor.id_tutor} value={tutor.id_tutor}>
+                            {tutor.nombre} {tutor.apellido} - {tutor.identificacion}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </>
+                   )}
                 </CardBody>
               </Card>
             )}

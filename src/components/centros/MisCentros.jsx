@@ -15,6 +15,8 @@ import {
   Tooltip
 } from "@nextui-org/react";
 import { useData } from '../../contexts/DataContext';
+import { jsonService } from '../../services/jsonService.jsx';
+import { usuariosService } from '../../services/usuariosService.jsx';
 import { useAuth } from '../../contexts/AuthContext';
 
 const MisCentros = () => {
@@ -43,6 +45,16 @@ const MisCentros = () => {
 
   // Solo los centros del director actual
   const centrosDirectorOptions = centrosDirector.map(c => ({ value: c.id_centro, label: c.nombre_centro }));
+
+  // Centros donde trabaja el doctor (puede ser uno o varios)
+  let centrosDelDoctor = [];
+  if (currentUser && currentUser.role === 'doctor') {
+    if (Array.isArray(currentUser.centrosAsignados) && currentUser.centrosAsignados.length > 0) {
+      centrosDelDoctor = centrosVacunacion.filter(c => currentUser.centrosAsignados.includes(c.id_centro));
+    } else if (currentUser.id_centro) {
+      centrosDelDoctor = centrosVacunacion.filter(c => c.id_centro === currentUser.id_centro);
+    }
+  }
 
   // Handlers vacuna
   const handleAddVacuna = () => {
@@ -87,12 +99,34 @@ const MisCentros = () => {
     const { name, value } = e.target;
     setLoteForm({ ...loteForm, [name]: name === 'cantidad_dosis' ? parseInt(value,10) : value });
   };
-  const handleLoteSubmit = e => {
+  const handleLoteSubmit = async e => {
     e.preventDefault();
-    if(editingLote) setLotesVacunas(lotesVacunas.map(l => l === editingLote ? { ...loteForm } : l));
-    else setLotesVacunas([...lotesVacunas, { ...loteForm, id_lote: `temp-${Math.random()}` }]);
+    if (editingLote) {
+      // Editar lote existente (PUT)
+      const loteEditado = {
+        ...loteForm,
+        id_lote: editingLote.id_lote,
+        cantidad_disponible: typeof loteForm.cantidad_disponible === 'number' ? loteForm.cantidad_disponible : loteForm.cantidad_dosis
+      };
+      await jsonService.saveData('Lotes_Vacunas', loteEditado, 'PUT');
+      setLotesVacunas(lotesVacunas.map(l => l === editingLote ? loteEditado : l));
+    } else {
+      // Crear nuevo lote (POST)
+      const newLote = {
+        ...loteForm,
+        id_lote: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `lote-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        cantidad_disponible: typeof loteForm.cantidad_dosis === 'number' ? loteForm.cantidad_dosis : 0
+      };
+      await jsonService.saveData('Lotes_Vacunas', newLote, 'POST');
+      setLotesVacunas([...lotesVacunas, newLote]);
+    }
+    // Forzar recarga global si existe setLotesVacunas en contexto (hack temporal)
+    if (typeof window !== 'undefined' && window.location) {
+      setTimeout(() => window.location.reload(), 500);
+    }
     setShowLoteModal(false);
   };
+
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'director') {
@@ -104,20 +138,38 @@ const MisCentros = () => {
     }
   }, [centrosVacunacion, currentUser]);
 
-  // Obtener todos los usuarios doctores (simulación, normalmente vendría de un servicio)
+  // Obtener todos los usuarios doctores activos desde el servicio real
   useEffect(() => {
-    // Simulación: doctores hardcodeados
-    const doctoresDemo = [
-      { id: 'doc1', name: 'Dr. Juan Pérez' },
-      { id: 'doc2', name: 'Dra. Ana Ruiz' },
-      { id: 'doc3', name: 'Dr. Pedro López' }
-    ];
-    setDoctores(doctoresDemo);
+    async function fetchDoctores() {
+      try {
+        const usuarios = await import('../../services/usuariosService').then(m => m.usuariosService.getUsuarios());
+        setDoctores(usuarios.filter(u => u.role === 'doctor' && u.active));
+      } catch (e) {
+        setDoctores([]);
+      }
+    }
+    fetchDoctores();
   }, []);
+
+  // Inicializar centrosConDoctores basado en los doctores y sus centrosAsignados
+  useEffect(() => {
+    // Construir el mapping: centroId -> [doctorIds]
+    const mapping = {};
+    doctores.forEach(doc => {
+      if (Array.isArray(doc.centrosAsignados)) {
+        doc.centrosAsignados.forEach(cid => {
+          if (!mapping[cid]) mapping[cid] = [];
+          mapping[cid].push(doc.id);
+        });
+      }
+    });
+    setCentrosConDoctores(mapping);
+  }, [doctores]);
 
   const handleOpenModal = (centro) => {
     setSelectedCentro(centro);
     // Cargar doctores ya asignados a este centro
+    setCheckedDoctors(centrosConDoctores[centro.id_centro] || []);
     setShowModal(true);
   };
 
@@ -143,6 +195,29 @@ const MisCentros = () => {
 
   return (
     <>
+      {/* Sección solo para doctores: ver en qué centros trabaja */}
+      {currentUser && currentUser.role === 'doctor' && (
+        <div className="mb-6">
+          <Card shadow="sm">
+            <CardHeader>
+              <h4 className="text-lg font-bold">Centros donde trabajas</h4>
+            </CardHeader>
+            <CardBody>
+              {centrosDelDoctor.length === 0 ? (
+                <p className="text-default-500">No tienes centros asignados.</p>
+              ) : (
+                <ul className="list-disc ml-6">
+                  {centrosDelDoctor.map(centro => (
+                    <li key={centro.id_centro}>
+                      <span className="font-semibold">{centro.nombre_centro}</span> <span className="text-default-400">({centro.direccion})</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardBody>
+          </Card>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {centrosDirector.length === 0 && (
           <div className="col-span-full text-center text-default-500 py-10">
@@ -331,57 +406,68 @@ const MisCentros = () => {
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1 items-center">
-                <span className="flex items-center gap-2 text-primary-700 dark:text-primary-300">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>
-                  Asignar doctor al centro
-                </span>
-                <span className="text-small text-default-500 mt-1">Selecciona un doctor para asignar al centro</span>
+              <ModalHeader className="flex flex-col gap-1">
+                <h3 className="text-xl font-bold">Asignar Doctores</h3>
               </ModalHeader>
-              <ModalBody className="px-6">
-                <ul className="divide-y divide-default-200">
-                  {doctores.map(doc => (
-                    <li
-                      key={doc.id}
-                      className="px-4 py-3 flex items-center gap-3 transition-colors hover:bg-primary-50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checkedDoctors.includes(doc.id)}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setCheckedDoctors(prev => [...prev, doc.id]);
-                          } else {
-                            setCheckedDoctors(prev => prev.filter(id => id !== doc.id));
-                          }
-                        }}
-                        className="form-checkbox accent-primary-600"
-                      />
-                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#06b6d4"/></svg>
-                      <span className="text-base">{doc.name}</span>
-                      {centrosConDoctores[selectedCentro?.id_centro]?.includes(doc.id) && (
-                        <span className="ml-auto text-primary-600 font-semibold">Ya asignado</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+              <ModalBody>
+                <div className="space-y-2">
+                  <div className="font-semibold">Selecciona los doctores a asignar:</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {doctores.map(doc => (
+                      <label key={doc.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={checkedDoctors.includes(doc.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setCheckedDoctors(prev => [...prev, doc.id]);
+                            } else {
+                              setCheckedDoctors(prev => prev.filter(id => id !== doc.id));
+                            }
+                          }}
+                        />
+                        <span>{doc.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </ModalBody>
-              <ModalFooter className="justify-center gap-4 pt-0">
-                <Button color="danger" variant="flat" onClick={onClose}>Cancelar</Button>
-                <Button
-                  color="primary"
-                  variant="solid"
-                  className="font-semibold"
-                  isDisabled={checkedDoctors.length === 0}
-                  onClick={() => {
-                    setCentrosConDoctores(prev => ({
-                      ...prev,
-                      [selectedCentro.id_centro]: checkedDoctors
-                    }));
-                    setShowModal(false);
-                  }}
-                >
-                  Asignar seleccionados
+              <ModalFooter>
+                <Button color="default" variant="flat" onClick={onClose}>Cancelar</Button>
+                <Button color="primary" onClick={async () => {
+                  // Persistir la asignación de doctores a centros en backend
+                  // 1. Para el centro seleccionado, asignar checkedDoctors
+                  // 2. Para cada doctor, actualizar su centrosAsignados
+                  // 3. Si algún doctor fue removido, actualizar también
+                  const centroId = selectedCentro.id_centro;
+                  // 1. Doctores actualmente asignados a este centro
+                  const prevDoctorIds = centrosConDoctores[centroId] || [];
+                  // 2. Doctores que se agregan o mantienen
+                  const newDoctorIds = checkedDoctors;
+                  // 3. Todos los ids de doctores relevantes (previos o actuales)
+                  const allDoctorIds = Array.from(new Set([...prevDoctorIds, ...newDoctorIds]));
+                  // 4. Actualizar centrosAsignados de cada doctor relevante
+                  allDoctorIds.forEach(docId => {
+                    const doc = doctores.find(d => d.id === docId);
+                    if (!doc) return;
+                    let centros = Array.isArray(doc.centrosAsignados) ? [...doc.centrosAsignados] : [];
+                    if (newDoctorIds.includes(docId)) {
+                      // Añadir centro si no está
+                      if (!centros.includes(centroId)) centros.push(centroId);
+                    } else {
+                      // Quitar centro si estaba
+                      centros = centros.filter(cid => cid !== centroId);
+                    }
+                    usuariosService.asignarCentrosADoctor(docId, centros);
+                  });
+                  // 5. Actualizar el mapping local
+                  setCentrosConDoctores(prev => ({
+                    ...prev,
+                    [centroId]: newDoctorIds
+                  }));
+                  setShowModal(false);
+                }}>
+                  Guardar Asignaciones
                 </Button>
               </ModalFooter>
             </>

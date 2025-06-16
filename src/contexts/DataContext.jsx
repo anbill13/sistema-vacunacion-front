@@ -37,8 +37,15 @@ export const DataProvider = ({ children }) => {
         const vacunasData = jsonService.getData('Vacunas', 'GET') || [];
         setVacunas(vacunasData);
 
-        // Cargar lotes de vacunas
-        const lotesData = jsonService.getData('Lotes_Vacunas', 'GET') || [];
+        // Cargar lotes de vacunas combinando GET, POST y PUT
+        const lotesGet = jsonService.getData('Lotes_Vacunas', 'GET') || [];
+        const lotesPost = jsonService.getData('Lotes_Vacunas', 'POST') || [];
+        const lotesPut = (jsonService.getData('Lotes_Vacunas', 'PUT') || []).filter(l => l && (l.id_lote || l.id) && (l.cantidad_disponible === undefined || l.cantidad_disponible > 0));
+        // Unifica y asegura id_lote único
+        const lotesData = [...lotesGet, ...lotesPost, ...lotesPut].map((l, idx) => ({
+          ...l,
+          id_lote: l.id_lote || l.id || `${l.id_vacuna}_${l.numero_lote || idx}`
+        }));
         setLotesVacunas(lotesData);
 
         // Cargar dosis aplicadas

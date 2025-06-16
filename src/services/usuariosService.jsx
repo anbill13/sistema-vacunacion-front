@@ -12,6 +12,29 @@ const adminUser = {
 const USERS_STORAGE_KEY = 'app_users';
 
 export const usuariosService = {
+
+  /**
+   * Asigna una lista de centros (array de IDs) a un doctor y persiste el cambio.
+   * @param {string} doctorId
+   * @param {string[]} centrosIds
+   * @returns {object|null} doctor actualizado o null si no existe
+   */
+  asignarCentrosADoctor(doctorId, centrosIds) {
+    try {
+      const users = this.getUsuarios().filter(u => u.id !== adminUser.id);
+      const doctorIdx = users.findIndex(u => u.id === doctorId);
+      if (doctorIdx === -1) return null;
+      const doctor = users[doctorIdx];
+      doctor.centrosAsignados = Array.isArray(centrosIds) ? [...centrosIds] : [];
+      users[doctorIdx] = doctor;
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+      return doctor;
+    } catch (error) {
+      console.error('Error al asignar centros a doctor:', error);
+      return null;
+    }
+  },
+
   getUsuarios() {
     try {
       const storedUsers = JSON.parse(localStorage.getItem(USERS_STORAGE_KEY)) || [];
