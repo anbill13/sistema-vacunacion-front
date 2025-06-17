@@ -5,12 +5,12 @@ import { useData } from '../../context/DataContext';
 const UserInfo = ({ user, onLogout, onShowLogin }) => {
   const { centrosVacunacion } = useData();
 
-  let centrosDelDoctor = [];
-  if (user && user.rol === 'doctor') { // Cambiado de role a rol
+  let centrosAsignadosUsuario = [];
+  if (user && (user.rol === 'doctor' || user.rol === 'director')) {
     if (Array.isArray(user.centrosAsignados) && user.centrosAsignados.length > 0) {
-      centrosDelDoctor = centrosVacunacion.filter(c => user.centrosAsignados.includes(c.id_centro));
+      centrosAsignadosUsuario = centrosVacunacion.filter(c => user.centrosAsignados.includes(c.id_centro));
     } else if (user.id_centro) {
-      centrosDelDoctor = centrosVacunacion.filter(c => String(c.id_centro) === String(user.id_centro));
+      centrosAsignadosUsuario = centrosVacunacion.filter(c => String(c.id_centro) === String(user.id_centro));
     }
   }
 
@@ -77,7 +77,7 @@ const UserInfo = ({ user, onLogout, onShowLogin }) => {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
       <User
-        name={user.name || user.username || 'Invitado'} // Usa username como fallback
+        name={<span style={{marginLeft: '12px'}}>{user.name || user.username || 'Invitado'}</span>}
         description={
           <Chip
             color={getRoleColor(user.rol)} // Cambiado de role a rol
@@ -98,7 +98,7 @@ const UserInfo = ({ user, onLogout, onShowLogin }) => {
       <Button color="danger" variant="flat" onClick={onLogout} size="sm">
         Cerrar Sesión
       </Button>
-      {user && user.rol === 'doctor' && ( // Cambiado de role a rol
+      {(user && (user.rol === 'doctor' || user.rol === 'director')) && (
         <Popover
           isOpen={centrosPopoverOpen}
           onOpenChange={setCentrosPopoverOpen}
@@ -106,16 +106,18 @@ const UserInfo = ({ user, onLogout, onShowLogin }) => {
         >
           <PopoverTrigger>
             <Button color="primary" variant="flat" size="sm">
-              Ver centros donde trabajo
+              {user.rol === 'director' ? 'Ver centros asignados' : 'Ver centros donde trabajo'}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="p-4 min-w-[250px]">
-            <div className="font-bold mb-2">Centros donde trabajas</div>
-            {centrosDelDoctor.length === 0 ? (
+            <div className="font-bold mb-2">
+              {user.rol === 'director' ? 'Centros asignados' : 'Centros donde trabajas'}
+            </div>
+            {centrosAsignadosUsuario.length === 0 ? (
               <p className="text-default-500">No tienes centros asignados.</p>
             ) : (
               <ul className="list-disc ml-6">
-                {centrosDelDoctor.map(centro => (
+                {centrosAsignadosUsuario.map(centro => (
                   <li key={centro.id_centro}>
                     <span className="font-semibold">{centro.nombre_centro}</span>{' '}
                     <span className="text-default-400">({centro.direccion})</span>

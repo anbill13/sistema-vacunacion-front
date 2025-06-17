@@ -1,6 +1,6 @@
 // src/services/apiService.jsx
 import axios from 'axios';
-import apiConfig from '../config/apiConfig';
+import apiConfig from '../config/apiConfig.jsx';
 
 const apiClient = axios.create({
   baseURL: apiConfig.baseURL,

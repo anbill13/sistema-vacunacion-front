@@ -18,6 +18,7 @@ export const DataProvider = ({ children }) => {
   const { currentUser } = useAuth();
 
   useEffect(() => {
+    console.log('[DEBUG] currentUser cambió:', currentUser);
     let mounted = true;
 
     const loadData = async () => {
@@ -35,6 +36,18 @@ export const DataProvider = ({ children }) => {
           usuariosService.getUsuarios(),
         ];
 
+        // Si el usuario es director, obtener sus centros asignados
+        let centrosAsignadosDirector = [];
+        if (currentUser && currentUser.role === 'director') {
+          try {
+            const directorService = require('../services/directorService').default;
+            centrosAsignadosDirector = await directorService.getCentrosAsignados(currentUser.id_usuario || currentUser.id);
+            console.log('[DEBUG] Centros asignados obtenidos desde directorService:', centrosAsignadosDirector);
+          } catch (e) {
+            console.warn('No se pudieron obtener centros asignados del servicio de director', e);
+          }
+        }
+
         const [
           centros,
           ninosData,
@@ -50,7 +63,13 @@ export const DataProvider = ({ children }) => {
 
         if (!mounted) return;
 
-        setCentrosVacunacion(centros || []);
+        console.log('[DEBUG] Centros recibidos:', centros);
+        setCentrosVacunacion(Array.isArray(centros) ? centros : centros ? [centros] : []);
+        // Si es director, guarda los centros asignados en el usuario para filtrado global
+        if (currentUser && currentUser.role === 'director' && centrosAsignadosDirector.length > 0) {
+          currentUser.centrosAsignados = centrosAsignadosDirector.map(c => c.id_centro);
+          localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        }
         setNinos(ninosData?.map(nino => ({
           ...nino,
           activo: nino?.activo !== undefined ? nino.activo : true,
@@ -88,7 +107,17 @@ export const DataProvider = ({ children }) => {
       }
     };
 
+    // Si el usuario no está autenticado, no limpiar el estado por defecto, solo mostrar error
+    if (!currentUser) {
+      console.warn('[DEBUG] currentUser es null, no se cargan ni limpian datos.');
+      setError('Debes iniciar sesión para ver los datos.');
+      return;
+    }
+
     loadData();
+
+    // Permitir recarga manual desde componentes hijos
+    DataProvider.reloadData = loadData;
 
     return () => { mounted = false; };
   }, [currentUser]);
@@ -286,8 +315,14 @@ export const DataProvider = ({ children }) => {
         getCentrosAsignadosADirector,
         loading,
         error,
+        reloadData: DataProvider.reloadData
       }}
     >
+      {error && (
+        <div style={{color:'red',background:'#fff3f3',padding:'1rem',textAlign:'center',fontWeight:'bold'}}>
+          {error}
+        </div>
+      )}
       {children}
     </DataContext.Provider>
   );

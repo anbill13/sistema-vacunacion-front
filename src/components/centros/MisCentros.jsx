@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Card, CardBody, CardHeader, Divider, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Tabs, Tab, Tooltip, Input, Select, SelectItem
+  Tabs, Tab, Tooltip, Input
 } from "@nextui-org/react";
 import { useData } from '../../context/DataContext';
 import { centrosService } from '../../services/centrosService';
@@ -220,11 +220,23 @@ const MisCentros = () => {
   };
 
   useEffect(() => {
-    if (currentUser && currentUser.role === 'director') {
-      const filtrados = centrosVacunacion.filter(
-        c => c.director && c.director.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
-      );
-      setCentrosDirector(filtrados);
+    if (currentUser) {
+      console.log("Current user role:", currentUser.role);
+      if (currentUser.role === 'director') {
+        // Usar name o username, según lo que venga del API
+        const directorName = (currentUser.name || currentUser.username || '').trim().toLowerCase();
+        console.log("Director name:", directorName);
+        console.log("Centros disponibles:", centrosVacunacion);
+        
+        const filtrados = centrosVacunacion.filter(
+          c => c.director && c.director.trim().toLowerCase() === directorName
+        );
+        console.log("Centros filtrados para el director:", filtrados);
+        setCentrosDirector(filtrados);
+      } else if (currentUser.role === 'administrador') {
+        // Los administradores pueden ver todos los centros
+        setCentrosDirector(centrosVacunacion);
+      }
     }
   }, [centrosVacunacion, currentUser]);
 
@@ -232,8 +244,12 @@ const MisCentros = () => {
     async function fetchDoctores() {
       try {
         const usuarios = await usuariosService.getUsuarios();
-        setDoctores(usuarios.filter(u => u.role === 'doctor' && u.active));
+        console.log("Usuarios obtenidos:", usuarios);
+        const doctoresFiltrados = usuarios.filter(u => u.role === 'doctor' || u.rol === 'doctor');
+        console.log("Doctores filtrados:", doctoresFiltrados);
+        setDoctores(doctoresFiltrados);
       } catch (e) {
+        console.error("Error al obtener doctores:", e);
         setDoctores([]);
       }
     }
@@ -254,8 +270,14 @@ const MisCentros = () => {
   }, [doctores]);
 
   const handleOpenModal = (centro) => {
+    console.log("Abriendo modal para centro:", centro);
     setSelectedCentro(centro);
-    setCheckedDoctors(centrosConDoctores[centro.id_centro] || []);
+    
+    // Obtener los doctores ya asignados a este centro
+    const doctoresAsignados = centrosConDoctores[centro.id_centro] || [];
+    console.log("Doctores asignados a este centro:", doctoresAsignados);
+    
+    setCheckedDoctors(doctoresAsignados);
     setShowModal(true);
   };
 
@@ -302,11 +324,13 @@ const MisCentros = () => {
           </Card>
         </div>
       )}
-      <div className="mb-6">
-        <Button color="primary" onClick={handleAddCentro} disabled={currentUser?.role !== 'administrador' && currentUser?.role !== 'director'}>
-          Añadir Nuevo Centro
-        </Button>
-      </div>
+      {currentUser?.role === 'administrador' && (
+        <div className="mb-6">
+          <Button color="primary" onClick={handleAddCentro}>
+            Añadir Nuevo Centro
+          </Button>
+        </div>
+      )}
       {error && (
         <div className="mb-4 p-4 bg-danger-100 text-danger-700 rounded">
           {error}
@@ -367,23 +391,75 @@ const MisCentros = () => {
                 </div>
               </CardBody>
             </Card>
-            {(currentUser?.role === 'administrador' || currentUser?.role === 'director') && (
-              <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex gap-2">
+              {/* Botón para asignar doctores - visible para administradores y directores */}
+              {(currentUser?.role === 'administrador' || currentUser?.role === 'director') && (
                 <Button color="primary" fullWidth onClick={() => handleOpenModal(centro)} className="font-semibold flex items-center gap-2 text-base">
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#06b6d4" /></svg>
                   Asignar Doctores
                 </Button>
-                <Button color="primary" onClick={() => handleEditCentro(centro)}>
-                  Editar
-                </Button>
-                <Button color="danger" onClick={() => handleDeleteCentro(centro)}>
-                  Eliminar
-                </Button>
-              </div>
-            )}
+              )}
+              
+              {/* Botones de editar y eliminar - solo visibles para administradores */}
+              {currentUser?.role === 'administrador' && (
+                <>
+                  <Button color="primary" onClick={() => handleEditCentro(centro)}>
+                    Editar
+                  </Button>
+                  <Button color="danger" onClick={() => handleDeleteCentro(centro)}>
+                    Eliminar
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         ))}
       </div>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <ModalContent>
+          <ModalHeader>Asignar Doctores al Centro</ModalHeader>
+          <ModalBody>
+            <ul className="space-y-2">
+              {doctores.length === 0 ? (
+                <li className="text-default-400">No hay doctores disponibles.</li>
+              ) : (
+                doctores.map(doc => (
+                  <li key={doc.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checkedDoctors.includes(doc.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setCheckedDoctors(prev => [...prev, doc.id]);
+                        } else {
+                          setCheckedDoctors(prev => prev.filter(id => id !== doc.id));
+                        }
+                      }}
+                    />
+                    <span>{doc.name} <span className="text-xs text-default-400">({doc.active ? 'Activo' : 'Inactivo'})</span></span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="primary" onClick={() => {
+              if (selectedCentro) {
+                setCentrosConDoctores(prev => ({
+                  ...prev,
+                  [selectedCentro.id_centro]: checkedDoctors
+                }));
+              }
+              setShowModal(false);
+            }}>
+              Guardar
+            </Button>
+            <Button variant="light" onClick={() => setShowModal(false)}>
+              Cancelar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
       <div className="mt-8">
         <Tabs
           selectedKey={activeTab}
@@ -516,22 +592,26 @@ const MisCentros = () => {
                 <div className="space-y-2">
                   <div className="font-semibold">Selecciona los doctores a asignar:</div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {doctores.map(doc => (
-                      <label key={doc.id} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={checkedDoctors.includes(doc.id)}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setCheckedDoctors(prev => [...prev, doc.id]);
-                            } else {
-                              setCheckedDoctors(prev => prev.filter(id => id !== doc.id));
-                            }
-                          }}
-                        />
-                        <span>{doc.name}</span>
-                      </label>
-                    ))}
+                    {doctores.length === 0 ? (
+                      <p className="text-default-500 col-span-2">No hay doctores disponibles para asignar.</p>
+                    ) : (
+                      doctores.map(doc => (
+                        <label key={doc.id} className="flex items-center gap-2 p-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+                          <input
+                            type="checkbox"
+                            checked={checkedDoctors.includes(doc.id)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setCheckedDoctors(prev => [...prev, doc.id]);
+                              } else {
+                                setCheckedDoctors(prev => prev.filter(id => id !== doc.id));
+                              }
+                            }}
+                          />
+                          <span>{doc.name || doc.username || `Doctor ID: ${doc.id}`}</span>
+                        </label>
+                      ))
+                    )}
                   </div>
                 </div>
               </ModalBody>

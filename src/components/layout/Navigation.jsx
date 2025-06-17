@@ -41,12 +41,10 @@ const Navigation = ({ activeTab, setActiveTab }) => {
   ];
 
   // Filter tabs based on user role
-  const filteredTabs = currentUser?.role === 'administrador'
-    ? tabs // Administrador ve todas las pestañas
-    : tabs.filter(tab => 
-        tab.roles.includes("all") || 
-        (currentUser?.role && tab.roles.includes(currentUser.role))
-      );
+  const filteredTabs = tabs.filter(tab => 
+    tab.roles.includes("all") || 
+    (currentUser?.role && tab.roles.includes(currentUser.role))
+  );
 
   return (
     <div className="w-full px-4 py-2">

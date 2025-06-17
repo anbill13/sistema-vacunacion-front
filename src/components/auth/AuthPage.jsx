@@ -69,6 +69,25 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
         localStorage.removeItem('authToken');
         const user = await usuariosService.validateLogin(formData.username, formData.password);
         if (user) {
+          // Guarda el usuario autenticado para persistencia tras recarga
+          localStorage.setItem('currentUser', JSON.stringify(user));
+
+          // Intentar obtener y guardar vacunas, lotes y usuarios si tienes permisos
+          try {
+            const vacunas = await usuariosService.getVacunas?.();
+            if (vacunas) localStorage.setItem('vacunas', JSON.stringify(vacunas));
+          } catch (e) { console.warn('No se pudieron guardar vacunas en localStorage'); }
+
+          try {
+            const lotes = await usuariosService.getLotesVacunas?.();
+            if (lotes) localStorage.setItem('lotesVacunas', JSON.stringify(lotes));
+          } catch (e) { console.warn('No se pudieron guardar lotes en localStorage'); }
+
+          try {
+            const usuarios = await usuariosService.getUsuarios?.();
+            if (usuarios) localStorage.setItem('usuarios', JSON.stringify(usuarios));
+          } catch (e) { console.warn('No se pudieron guardar usuarios en localStorage'); }
+
           if (typeof onLogin === 'function') {
             onLogin(user);
           } else {

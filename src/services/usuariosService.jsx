@@ -33,6 +33,29 @@ const usuariosService = {
       throw new Error(error.message);
     }
   },
+
+  async asignarCentrosADoctor(doctorId, centrosIds) {
+    try {
+      if (!doctorId) {
+        throw new Error('ID del doctor es requerido');
+      }
+      
+      // Asegurarse de que centrosIds sea un array
+      const centros = Array.isArray(centrosIds) ? centrosIds : [];
+      
+      // Llamada a la API para actualizar los centros asignados al doctor
+      const response = await apiService.put(`/api/users/${doctorId}/centros`, { centrosAsignados: centros });
+      
+      return {
+        success: true,
+        message: 'Centros asignados correctamente',
+        data: response
+      };
+    } catch (error) {
+      console.error('Error al asignar centros al doctor:', error);
+      throw new Error(error.message || 'Error al asignar centros');
+    }
+  },
 };
 
 export default usuariosService;
