@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { centrosService } from '../../services/centrosService';
-import { usuariosService } from '../../services/usuariosService';
+import usuariosService from '../../services/usuariosService';
 import CentrosFilter from './CentrosFilter';
 import CentrosMap from './CentrosMap';
 import CentrosList from './CentrosList';
@@ -25,7 +25,7 @@ const CentrosPage = () => {
         // Usar el servicio de centros para obtener todos los centros (incluidos los nuevos y actualizados)
         let centros = centrosService.getCentros();
         console.log('Centros cargados en CentrosPage:', centros);
-        
+
         // Si el usuario es un director, filtrar solo sus centros asignados
         if (currentUser?.role === 'director') {
           const centrosAsignados = usuariosService.getCentrosAsignadosADirector(currentUser.id);
@@ -36,7 +36,7 @@ const CentrosPage = () => {
           const centroAsignado = usuariosService.getCentroAsignadoADoctor(currentUser.id);
           centros = centros.filter(centro => centro.id_centro === centroAsignado);
         }
-        
+
         setCentrosVacunacion(centros);
       } catch (error) {
         console.error('Error loading centros:', error);
@@ -71,7 +71,7 @@ const CentrosPage = () => {
     <div className="space-y-6">
       <Card>
         <CardBody>
-          <CentrosFilter 
+          <CentrosFilter
             filterType={filterType}
             setFilterType={setFilterType}
             filterTerm={filterTerm}
@@ -80,7 +80,7 @@ const CentrosPage = () => {
           />
         </CardBody>
       </Card>
-      
+
       <Card className="overflow-hidden">
         <CardHeader className="bg-primary-50 dark:bg-primary-900/20">
           <h3 className="text-lg font-semibold">Mapa de Centros de Vacunación</h3>
@@ -91,7 +91,7 @@ const CentrosPage = () => {
               <Spinner size="lg" label="Cargando centros..." />
             </div>
           ) : (
-            <CentrosMap 
+            <CentrosMap
               filteredCentros={filteredCentros}
               handleCentroClick={handleCentroClick}
               handleVerPacientes={handleVerPacientes}
@@ -100,7 +100,7 @@ const CentrosPage = () => {
           )}
         </CardBody>
       </Card>
-      
+
       <Card>
         <CardHeader className="bg-primary-50 dark:bg-primary-900/20">
           <h3 className="text-lg font-semibold">Listado de Centros</h3>
@@ -112,7 +112,7 @@ const CentrosPage = () => {
               <Spinner size="lg" label="Cargando centros..." />
             </div>
           ) : (
-            <CentrosList 
+            <CentrosList
               filteredCentros={filteredCentros}
               handleCentroClick={handleCentroClick}
               handleVerPacientes={handleVerPacientes}
@@ -124,7 +124,7 @@ const CentrosPage = () => {
 
       {/* Modal de Pacientes */}
       {showPacientesModal && selectedCentro && (
-        <PacientesModal 
+        <PacientesModal
           isOpen={showPacientesModal}
           onClose={() => setShowPacientesModal(false)}
           centro={selectedCentro}

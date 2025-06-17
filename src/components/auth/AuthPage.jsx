@@ -1,7 +1,8 @@
+// src/components/auth/AuthPage.jsx
 import React, { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
-import { usuariosService } from '../../services/usuariosService';
+import usuariosService from '../../services/usuariosService';
 
 const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,12 +15,11 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
     email: '',
     role: 'padre',
     cedula: '',
-    telefono: ''
+    telefono: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Dark mode effects
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('publicDarkMode');
     if (savedDarkMode) {
@@ -43,9 +43,9 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
 
     try {
       if (isLogin) {
-        // Proceso de login usando usuariosService
+        // Clear token before login to avoid sending stale token
+        localStorage.removeItem('authToken');
         const user = await usuariosService.validateLogin(formData.username, formData.password);
-
         if (user) {
           if (typeof onLogin === 'function') {
             onLogin(user);
@@ -56,7 +56,6 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
           setError('Usuario o contraseña incorrectos');
         }
       } else {
-        // Proceso de registro
         if (formData.password !== formData.confirmPassword) {
           setError('Las contraseñas no coinciden');
           return;
@@ -67,38 +66,21 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
           return;
         }
 
-        // Verificar si el usuario ya existe usando el servicio
-        const existingUsers = await usuariosService.getUsuarios();
-        if (existingUsers.find(u => u.username === formData.username)) {
-          setError('El nombre de usuario ya existe');
-          return;
-        }
+        const newUser = {
+          username: formData.username,
+          password: formData.password,
+          role: formData.role,
+          name: formData.name,
+          email: formData.email,
+          cedula: formData.cedula,
+          telefono: formData.telefono,
+        };
 
-        try {
-          // Crear nuevo usuario y guardarlo usando usuariosService
-          const newUser = {
-            username: formData.username,
-            password: formData.password,
-            role: formData.role,
-            name: formData.name,
-            email: formData.email,
-            cedula: formData.cedula,
-            telefono: formData.telefono,
-            id: `user-${Date.now()}`
-          };
-
-          // Guardar usuario en localStorage
-          const savedUser = await usuariosService.saveUsuario(newUser);
-          
-          // Auto-login después del registro exitoso
-          onLogin(savedUser);
-        } catch (err) {
-          setError('Error al guardar el usuario. Intenta nuevamente.');
-          console.error('Error en registro:', err);
-        }
+        const savedUser = await usuariosService.saveUsuario(newUser);
+        onLogin(savedUser);
       }
     } catch (err) {
-      setError('Error en el servidor. Intenta nuevamente.');
+      setError(err.message || 'Error en el servidor. Intenta nuevamente.');
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -108,18 +90,16 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
-    // Limpiar mensajes de error cuando el usuario comienza a escribir
     setError('');
   };
-
 
   return (
     <div className="auth-page">
       <div className="auth-container">
         <div className="auth-header">
-          <button 
+          <button
             onClick={onBack}
             className="back-button"
             title="Volver a la página principal"
@@ -129,9 +109,9 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="dark-mode-toggle-auth"
-            title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+            title={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
           >
-            {darkMode ? "☀️" : "🌙"}
+            {darkMode ? '☀️' : '🌙'}
           </button>
           <h1>Sistema de Vacunación</h1>
           <p>Gestión integral de centros de vacunación y pacientes</p>
@@ -162,9 +142,9 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                       confirmPassword: '',
                       name: '',
                       email: '',
-                      role: 'padre', // Mantener como padre
+                      role: 'padre',
                       cedula: '',
-                      telefono: ''
+                      telefono: '',
                     });
                   }}
                 >
@@ -175,14 +155,9 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
 
             <CardBody>
               <form onSubmit={handleSubmit} className="auth-form">
-                {error && (
-                  <div className="error-message">
-                    {error}
-                  </div>
-                )}
+                {error && <div className="error-message">{error}</div>}
 
                 {isLogin ? (
-                  // Formulario de Login
                   <>
                     <div className="form-group">
                       <label>Usuario</label>
@@ -207,19 +182,8 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                         required
                       />
                     </div>
-
-                    <div className="demo-users">
-                      <h4>Usuarios de prueba:</h4>
-                      <div className="demo-user-list">
-                        <div><strong>Admin:</strong> admin / admin123</div>
-                        <div><strong>Director:</strong> director1 / director123 (Centros 1,2)</div>
-                        <div><strong>Doctor:</strong> doctor1 / doctor123</div>
-                        <div><strong>Padre:</strong> padre1 / padre123</div>
-                      </div>
-                    </div>
                   </>
                 ) : (
-                  // Formulario de Registro
                   <>
                     <div className="form-row">
                       <div className="form-group">

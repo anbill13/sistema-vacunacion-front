@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+// src/App.jsx
+import React, { useState, Suspense, Component } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import "./App.css";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -22,7 +24,29 @@ import AuthPage from "./components/auth/AuthPage";
 import AdminPage from "./components/admin/AdminPage";
 import { Modal } from "./components/ui/Modal";
 
-// Fix for default marker icon
+class ErrorBoundary extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div>
+          <h1>Algo salió mal.</h1>
+          <p>{this.state.error.message}</p>
+          <button onClick={() => this.setState({ hasError: false, error: null })}>
+            Intentar de nuevo
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -30,79 +54,87 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-function AppContent() {
-  const [activeTab, setActiveTab] = useState("centros");
+function AppContent({ activeTab, setActiveTab }) {
+  const { currentUser, currentPage, handleLogin, showAuthPage, showPublicPage } = useAuth();
+  const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const { currentPage, showAuthPage, showPublicPage, handleLogin } = useAuth();
 
-  // Renderizado condicional basado en la página actual
-  if (currentPage === 'public') {
-    return (
-      <PublicPage onShowAuth={showAuthPage} />
-    );
-  }
+  React.useEffect(() => {
+    if (currentPage === 'public' && window.location.pathname !== '/') navigate('/');
+    if (currentPage === 'auth' && window.location.pathname !== '/auth') navigate('/auth');
+    if (currentUser && window.location.pathname === '/auth') {
+      // Set activeTab based on role
+      const newTab = currentUser.role === 'administrador' ? 'admin' :
+                     currentUser.role === 'director' ? 'mis-centros' :
+                     currentUser.role === 'doctor' ? 'pacientes' :
+                     currentUser.role === 'padre' ? 'mis-hijos' : 'centros';
+      setActiveTab(newTab);
+      navigate('/dashboard');
+    }
+  }, [currentPage, currentUser, navigate, setActiveTab]);
 
-  if (currentPage === 'auth') {
-    return (
-      <AuthPage 
-        onBack={showPublicPage}
-        onLogin={handleLogin}
-      />
-    );
-  }
-
-  // Dashboard principal (solo para usuarios autenticados)
   return (
-    <div className="container-fluid">
-      {/* Header */}
-      <Header onShowLogin={() => setShowLoginModal(true)} />
-
-      {/* Navigation */}
-      <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* Content */}
-      <div className="content-wrapper animate-fadeIn">
-        {activeTab === "centros" && <CentrosPage />}
-        
-        {activeTab === "pacientes" && (
-          <GestionPacientes />
-        )}
-        
-        {activeTab === "mis-centros" && (
-          <MisCentros />
-        )}
-        
-        {activeTab === "admin" && (
-          <AdminPage />
-        )}
-
-        {activeTab === "mis-hijos" && (
-          <React.Suspense fallback={<div>Cargando...</div>}>
-            {require("./components/padres/MisHijos").default()}
-          </React.Suspense>
-        )}
-      </div>
-
-      {/* Modal de Login */}
-      {showLoginModal && (
-        <Modal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)}>
-          <AuthPage 
-            isOpen={showLoginModal}
-            onClose={() => setShowLoginModal(false)} 
-            onLogin={handleLogin}
-          />
-        </Modal>
-      )}
-    </div>
+    <Routes>
+      <Route
+        path="/"
+        element={
+          currentUser ? <Navigate to="/dashboard" replace /> : <PublicPage onShowAuth={showAuthPage} />
+        }
+      />
+      <Route
+        path="/auth"
+        element={
+          currentUser ? <Navigate to="/dashboard" replace /> : <AuthPage onBack={showPublicPage} onLogin={handleLogin} />
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          currentUser ? (
+            <div className="container-fluid">
+              <Header onShowLogin={() => setShowLoginModal(true)} />
+              <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+              <div className="content-wrapper animate-fadeIn">
+                {activeTab === "centros" && <CentrosPage />}
+                {activeTab === "pacientes" && <GestionPacientes />}
+                {activeTab === "mis-centros" && <MisCentros />}
+                {activeTab === "admin" && <AdminPage />}
+                {activeTab === "mis-hijos" && (
+                  <Suspense fallback={<div>Cargando...</div>}>
+                    {require("./components/padres/MisHijos").default()}
+                  </Suspense>
+                )}
+              </div>
+              {showLoginModal && (
+                <Modal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)}>
+                  <AuthPage
+                    isOpen={showLoginModal}
+                    onClose={() => setShowLoginModal(false)}
+                    onLogin={handleLogin}
+                  />
+                </Modal>
+              )}
+            </div>
+          ) : (
+            <Navigate to="/auth" replace />
+          )
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
 function App() {
+  const [activeTab, setActiveTab] = useState("centros");
+
   return (
     <ThemeProvider>
       <AuthProvider>
         <DataProvider>
-          <AppContent />
+          <ErrorBoundary>
+            <AppContent activeTab={activeTab} setActiveTab={setActiveTab} />
+          </ErrorBoundary>
         </DataProvider>
       </AuthProvider>
     </ThemeProvider>

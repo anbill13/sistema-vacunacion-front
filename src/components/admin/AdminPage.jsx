@@ -1,20 +1,21 @@
+// src/components/admin/AdminPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Button, 
-  Card, 
-  CardBody, 
-  Tabs, 
-  Tab, 
-  Modal, 
-  ModalHeader, 
+import {
+  Button,
+  Card,
+  CardBody,
+  Tabs,
+  Tab,
+  Modal,
+  ModalHeader,
   ModalBody,
   ModalContent,
   ModalFooter,
   Tooltip
 } from "@nextui-org/react";
-import { usuariosService } from '../../services/usuariosService';
+import usuariosService from '../../services/usuariosService';
 import { centrosService } from '../../services/centrosService';
 import { jsonService } from '../../services/jsonService';
 
@@ -60,41 +61,41 @@ const floatingButtonStyles = `
 `;
 
 const AdminPage = () => {
-  const { 
-    centrosVacunacion, 
+  const {
+    centrosVacunacion,
     setCentrosVacunacion,
     directores,
     setDirectores,
+    vacunas,
+    setVacunas,
+    lotesVacunas,
+    setLotesVacunas
   } = useData();
-  
-  // Usar vacunas y lotes globales del contexto
-  const { vacunas, setVacunas, lotesVacunas, setLotesVacunas } = useData();
-  // Ya no se necesita cargar localmente, el contexto se encarga
 
-  const { currentUser } = useAuth();  // Obtener el usuario actual
-  
+  const { currentUser } = useAuth();
+
   // Filtrar centros basado en el rol del usuario
   const centrosFiltrados = React.useMemo(() => {
     if (!currentUser) return [];
-    
-    // Para administrador o cualquier rol con acceso completo
-    if (currentUser.role === 'admin' || currentUser.role === 'administrador' || currentUser.role === 'director') {
+
+    // Para administrador, mostrar todos los centros
+    if (currentUser.role === 'administrador') {
       console.log('Admin user, showing all centers:', centrosVacunacion);
       return centrosVacunacion;
     }
-    
+
     // Para directores, mostrar solo sus centros asignados
     if (currentUser.role === 'director') {
       const centrosAsignados = usuariosService.getCentrosAsignadosADirector(currentUser.id) || [];
       console.log('Director user, assigned centers:', centrosAsignados);
-      
-      return centrosVacunacion.filter(centro => 
-        centro.director === currentUser.name || 
+
+      return centrosVacunacion.filter(centro =>
+        centro.director === currentUser.name ||
         centro.id_centro === currentUser.centroId ||
         centrosAsignados.some(c => c.id_centro === centro.id_centro)
       );
     }
-    
+
     return [];
   }, [currentUser, centrosVacunacion]);
 
@@ -147,12 +148,11 @@ const AdminPage = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'director', // Por defecto, director
+    role: 'director',
     active: true
   });
 
   const [usuarios, setUsuarios] = useState([]);
-  
 
   // Handlers para centros
   const handleAddCentro = () => {
@@ -197,17 +197,14 @@ const AdminPage = () => {
     if (window.confirm(`¿Está seguro que desea eliminar el centro ${centro.nombre_centro}?`)) {
       try {
         await centrosService.deleteCentro(centro.id_centro);
-        
-        // Actualizar la lista de centros
+
         const updatedCentros = centrosService.getCentros();
         setCentrosVacunacion(updatedCentros);
 
-        // Si el centro tenía un director asignado, actualizar la asignación
         if (centro.director) {
           const directorUser = directores.find(d => d.name === centro.director);
           if (directorUser) {
             await usuariosService.desasignarCentroDeDirector(directorUser.id);
-            // Recargar la lista de directores
             const usuariosActualizados = await usuariosService.getUsuarios();
             setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
           }
@@ -229,34 +226,27 @@ const AdminPage = () => {
         id_centro: editingCentro ? editingCentro.id_centro : undefined
       };
 
-      // Validaciones básicas
       if (!newCentro.nombre_centro || !newCentro.direccion) {
         alert('El nombre del centro y la dirección son obligatorios');
         return;
       }
 
-      // Guardar el centro usando el servicio
       await centrosService.saveCentro(newCentro);
-      
-      // Actualizar la lista de centros
+
       const updatedCentros = centrosService.getCentros();
       setCentrosVacunacion(updatedCentros);
 
-      // Si hay un director asignado, actualizar la asignación en localStorage
       if (newCentro.director) {
         const directorUser = directores.find(d => d.name === newCentro.director);
         if (directorUser) {
           await usuariosService.asignarCentroADirector(directorUser.id, newCentro);
-          // Recargar la lista de directores para actualizar sus asignaciones
           const usuariosActualizados = await usuariosService.getUsuarios();
           setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
         }
       }
 
-      // Mostrar mensaje de éxito
       alert(`Centro ${editingCentro ? 'actualizado' : 'creado'} correctamente`);
 
-      // Limpiar el formulario y cerrar el modal
       setShowAddCentroModal(false);
       setCentroForm({
         nombre_centro: '',
@@ -310,36 +300,40 @@ const AdminPage = () => {
     const { name, value } = e.target;
     setVacunaForm({
       ...vacunaForm,
-      [name]: name === 'dosis_requeridas' || name === 'intervalo_dosis' || 
-              name === 'edad_minima' || name === 'edad_maxima' 
-                ? parseInt(value, 10) 
-                : value
+      [name]: name === 'dosis_requeridas' || name === 'intervalo_dosis' ||
+        name === 'edad_minima' || name === 'edad_maxima'
+        ? parseInt(value, 10)
+        : value
     });
   };
 
   const handleVacunaSubmit = async (e) => {
     e.preventDefault();
-    if (editingVacuna) {
-      // Editar vacuna existente (PUT)
-      const vacunaEditada = {
-        ...vacunaForm,
-        id_vacuna: editingVacuna.id_vacuna,
-        fecha_actualizacion: new Date().toISOString()
-      };
-      await jsonService.saveData('Vacunas', vacunaEditada, 'PUT');
-      setVacunas(vacunas.map(v => v.id_vacuna === editingVacuna.id_vacuna ? vacunaEditada : v));
-    } else {
-      // Crear nueva vacuna (POST)
-      const newVacuna = {
-        ...vacunaForm,
-        id_vacuna: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `vacuna-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-        fecha_creacion: new Date().toISOString(),
-        fecha_actualizacion: new Date().toISOString()
-      };
-      await jsonService.saveData('Vacunas', newVacuna, 'POST');
-      setVacunas([...vacunas, newVacuna]);
+    try {
+      if (editingVacuna) {
+        const vacunaEditada = {
+          ...vacunaForm,
+          id_vacuna: editingVacuna.id_vacuna,
+          fecha_actualizacion: new Date().toISOString()
+        };
+        await jsonService.saveData('Vacunas', vacunaEditada, 'PUT');
+        setVacunas(vacunas.map(v => v.id_vacuna === editingVacuna.id_vacuna ? vacunaEditada : v));
+      } else {
+        const newVacuna = {
+          ...vacunaForm,
+          id_vacuna: crypto?.randomUUID?.() || `vacuna-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          fecha_creacion: new Date().toISOString(),
+          fecha_actualizacion: new Date().toISOString()
+        };
+        await jsonService.saveData('Vacunas', newVacuna, 'POST');
+        setVacunas([...vacunas, newVacuna]);
+      }
+      alert(`Vacuna ${editingVacuna ? 'actualizada' : 'creada'} correctamente`);
+      setShowAddVacunaModal(false);
+    } catch (error) {
+      console.error('Error al guardar vacuna:', error);
+      alert('Error al guardar la vacuna. Por favor intente nuevamente.');
     }
-    setShowAddVacunaModal(false);
   };
 
   // Handlers para lotes
@@ -381,27 +375,31 @@ const AdminPage = () => {
 
   const handleLoteSubmit = async (e) => {
     e.preventDefault();
-    if (editingLote) {
-      // Editar lote existente (PUT)
-      const loteEditado = {
-        ...loteForm,
-        id_lote: editingLote.id_lote,
-        fecha_actualizacion: new Date().toISOString()
-      };
-      await jsonService.saveData('Lotes_Vacunas', loteEditado, 'PUT');
-      setLotesVacunas(lotesVacunas.map(l => l.id_lote === editingLote.id_lote ? loteEditado : l));
-    } else {
-      // Crear nuevo lote (POST)
-      const newLote = {
-        ...loteForm,
-        id_lote: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `lote-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-        fecha_creacion: new Date().toISOString(),
-        fecha_actualizacion: new Date().toISOString()
-      };
-      await jsonService.saveData('Lotes_Vacunas', newLote, 'POST');
-      setLotesVacunas([...lotesVacunas, newLote]);
+    try {
+      if (editingLote) {
+        const loteEditado = {
+          ...loteForm,
+          id_lote: editingLote.id_lote,
+          fecha_actualizacion: new Date().toISOString()
+        };
+        await jsonService.saveData('Lotes_Vacunas', loteEditado, 'PUT');
+        setLotesVacunas(lotesVacunas.map(l => l.id_lote === editingLote.id_lote ? loteEditado : l));
+      } else {
+        const newLote = {
+          ...loteForm,
+          id_lote: crypto?.randomUUID?.() || `lote-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          fecha_creacion: new Date().toISOString(),
+          fecha_actualizacion: new Date().toISOString()
+        };
+        await jsonService.saveData('Lotes_Vacunas', newLote, 'POST');
+        setLotesVacunas([...lotesVacunas, newLote]);
+      }
+      alert(`Lote ${editingLote ? 'actualizado' : 'creado'} correctamente`);
+      setShowAddLoteModal(false);
+    } catch (error) {
+      console.error('Error al guardar lote:', error);
+      alert('Error al guardar el lote. Por favor intente nuevamente.');
     }
-    setShowAddLoteModal(false);
   };
 
   // Handlers para usuarios
@@ -413,7 +411,7 @@ const AdminPage = () => {
       email: '',
       password: '',
       confirmPassword: '',
-      role: 'director', // Por defecto, director
+      role: 'director',
       active: true
     });
     setShowAddUsuarioModal(true);
@@ -432,28 +430,27 @@ const AdminPage = () => {
     });
     setShowAddUsuarioModal(true);
   };
-  
+
   const toggleUsuarioStatus = async (usuario) => {
     try {
       const updatedUser = {
         ...usuario,
         active: !usuario.active
       };
-      
+
       await usuariosService.saveUsuario(updatedUser);
-      
-      // Obtener la lista actualizada de usuarios
+
       const usuariosActualizados = await usuariosService.getUsuarios();
       setUsuarios(usuariosActualizados);
       setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
-      
+
       alert(`Usuario ${usuario.name} ${updatedUser.active ? 'activado' : 'desactivado'} correctamente`);
     } catch (error) {
       console.error('Error al actualizar estado del usuario:', error);
       alert('Error al actualizar el estado del usuario');
     }
   };
-  
+
   const handleDeleteUsuario = async (usuario) => {
     if (usuario.role === 'administrador') {
       alert('No se puede eliminar al usuario administrador');
@@ -464,12 +461,11 @@ const AdminPage = () => {
     if (confirmed) {
       try {
         await usuariosService.deleteUsuario(usuario.id);
-        
-        // Obtener la lista actualizada de usuarios
+
         const usuariosActualizados = await usuariosService.getUsuarios();
         setUsuarios(usuariosActualizados);
         setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
-        
+
         alert('Usuario eliminado correctamente');
       } catch (error) {
         console.error('Error al eliminar usuario:', error);
@@ -488,8 +484,7 @@ const AdminPage = () => {
 
   const handleUsuarioSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validar que las contraseñas coincidan
+
     if (usuarioForm.password !== usuarioForm.confirmPassword) {
       alert('Las contraseñas no coinciden');
       return;
@@ -507,18 +502,14 @@ const AdminPage = () => {
         password: usuarioForm.password
       };
 
-      // Usar el servicio para guardar el usuario
       await usuariosService.saveUsuario(usuarioData);
-      
-      // Obtener la lista actualizada de usuarios
+
       const usuariosActualizados = await usuariosService.getUsuarios();
       setUsuarios(usuariosActualizados);
       setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
 
-      // Mostrar mensaje de éxito
       alert(`Usuario ${usuarioForm.name} ${editingUsuario ? 'actualizado' : 'creado'} correctamente`);
-      
-      // Cerrar el modal y resetear el formulario
+
       setShowAddUsuarioModal(false);
       setUsuarioForm({
         name: '',
@@ -540,16 +531,13 @@ const AdminPage = () => {
     const confirmed = window.confirm(`¿Está seguro de eliminar la vacuna ${vacuna.nombre_vacuna}?\nEsta acción no se puede deshacer y eliminará también los lotes asociados.`);
     if (confirmed) {
       try {
-        // Eliminar los lotes asociados a esta vacuna
         const lotesAsociados = lotesVacunas.filter(lote => lote.id_vacuna === vacuna.id_vacuna);
         for (const lote of lotesAsociados) {
-          await jsonService.saveData('Lotes_Vacunas', 'DELETE', { id: lote.id_lote });
+          await jsonService.saveData('Lotes_Vacunas', { id: lote.id_lote }, 'DELETE');
         }
-        
-        // Eliminar la vacuna
-        await jsonService.saveData('Vacunas', 'DELETE', { id: vacuna.id_vacuna });
 
-        // Actualizar el estado
+        await jsonService.saveData('Vacunas', { id: vacuna.id_vacuna }, 'DELETE');
+
         setVacunas(prevVacunas => prevVacunas.filter(v => v.id_vacuna !== vacuna.id_vacuna));
         setLotesVacunas(prevLotes => prevLotes.filter(l => l.id_vacuna !== vacuna.id_vacuna));
 
@@ -565,10 +553,8 @@ const AdminPage = () => {
     const confirmed = window.confirm(`¿Está seguro de eliminar el lote ${lote.numero_lote}?\nEsta acción no se puede deshacer.`);
     if (confirmed) {
       try {
-        // Eliminar el lote
-        await jsonService.saveData('Lotes_Vacunas', 'DELETE', { id: lote.id_lote });
+        await jsonService.saveData('Lotes_Vacunas', { id: lote.id_lote }, 'DELETE');
 
-        // Actualizar el estado
         setLotesVacunas(prevLotes => prevLotes.filter(l => l.id_lote !== lote.id_lote));
 
         alert('Lote eliminado correctamente');
@@ -580,43 +566,27 @@ const AdminPage = () => {
   };
 
   useEffect(() => {
-    // Cargar usuarios y centros del servicio
     const loadData = async () => {
-      // Cargar usuarios
-      const usuariosCargados = await usuariosService.getUsuarios();
-      setUsuarios(usuariosCargados);
-      setDirectores(usuariosCargados.filter(u => u.role === 'director'));
-      // setDoctores(usuariosCargados.filter(u => u.role === 'doctor' && u.active));
-      
-      // Cargar centros usando el servicio de centros
-      const centrosCargados = centrosService.getCentros();
-      console.log('Centros cargados en AdminPage:', centrosCargados);
-      setCentrosVacunacion(centrosCargados);
+      try {
+        const usuariosCargados = await usuariosService.getUsuarios();
+        setUsuarios(usuariosCargados);
+        setDirectores(usuariosCargados.filter(u => u.role === 'director'));
+
+        const centrosCargados = centrosService.getCentros();
+        console.log('Centros cargados en AdminPage:', centrosCargados);
+        setCentrosVacunacion(centrosCargados);
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+        setUsuarios([]);
+      }
     };
     loadData();
   }, [setDirectores, setCentrosVacunacion]);
 
-  useEffect(() => {
-    // Cargar usuarios al montar el componente
-    const loadUsuarios = async () => {
-      try {
-        const usuariosCargados = await usuariosService.getUsuarios();
-        setUsuarios(usuariosCargados);
-      } catch (error) {
-        console.error('Error al cargar usuarios:', error);
-        setUsuarios([]);
-      }
-    };
-    loadUsuarios();
-  }, []);
-
-  // Botón flotante para agregar nuevos elementos
-
   return (
     <div className="space-y-6 p-4 relative">
-      {/* Estilos para los componentes */}
       <style>{floatingButtonStyles}</style>
-      
+
       <Card shadow="sm" className="bg-gradient-to-r from-primary-100 to-secondary-100 dark:from-primary-900/40 dark:to-secondary-900/40">
         <CardBody>
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -651,7 +621,7 @@ const AdminPage = () => {
         </CardBody>
       </Card>
 
-      <Tabs 
+      <Tabs
         selectedKey={activeSection}
         onSelectionChange={setActiveSection}
         variant="underlined"
@@ -715,7 +685,7 @@ const AdminPage = () => {
                 <span>Añadir Centro</span>
               </button>
             </div>
-            
+
             <div className="data-table-container">
               <div className="modern-table-wrapper">
                 <table className="modern-table">
@@ -748,7 +718,7 @@ const AdminPage = () => {
                         <td>
                           <div className="relative flex gap-2">
                             <Tooltip content="Editar centro" placement="top">
-                              <Button 
+                              <Button
                                 color="primary"
                                 variant="shadow"
                                 size="sm"
@@ -759,7 +729,7 @@ const AdminPage = () => {
                               </Button>
                             </Tooltip>
                             <Tooltip content="Eliminar centro" placement="top">
-                              <Button 
+                              <Button
                                 color="danger"
                                 variant="shadow"
                                 size="sm"
@@ -793,7 +763,7 @@ const AdminPage = () => {
                 <span>Añadir Vacuna</span>
               </button>
             </div>
-            
+
             <div className="data-table-container">
               <div className="modern-table-wrapper">
                 <table className="modern-table">
@@ -825,7 +795,7 @@ const AdminPage = () => {
                         <td>
                           <div className="relative flex gap-2">
                             <Tooltip content="Editar vacuna" placement="top">
-                              <Button 
+                              <Button
                                 color="primary"
                                 variant="shadow"
                                 size="sm"
@@ -836,7 +806,7 @@ const AdminPage = () => {
                               </Button>
                             </Tooltip>
                             <Tooltip content="Eliminar vacuna" placement="top">
-                              <Button 
+                              <Button
                                 color="danger"
                                 variant="shadow"
                                 size="sm"
@@ -870,7 +840,7 @@ const AdminPage = () => {
                 <span>Añadir Lote</span>
               </button>
             </div>
-            
+
             <div className="data-table-container">
               <div className="modern-table-wrapper">
                 <table className="modern-table">
@@ -888,15 +858,14 @@ const AdminPage = () => {
                     {lotesVacunas.map(lote => {
                       const vacuna = vacunas.find(v => v.id_vacuna === lote.id_vacuna);
                       const centro = centrosVacunacion.find(c => c.id_centro === lote.id_centro);
-                      
-                      // Calcular si está próximo a vencer (30 días)
+
                       const fechaVencimiento = lote.fecha_vencimiento ? new Date(lote.fecha_vencimiento) : null;
                       const hoy = new Date();
                       const diasParaVencer = fechaVencimiento ? Math.floor((fechaVencimiento - hoy) / (1000 * 60 * 60 * 24)) : null;
-                      const estadoLote = !fechaVencimiento ? 'normal' : 
-                                        diasParaVencer < 0 ? 'vencido' : 
-                                        diasParaVencer < 30 ? 'proximo' : 'normal';
-                      
+                      const estadoLote = !fechaVencimiento ? 'normal' :
+                        diasParaVencer < 0 ? 'vencido' :
+                          diasParaVencer < 30 ? 'proximo' : 'normal';
+
                       return (
                         <tr key={lote.id_lote} className={`lote-row ${estadoLote}`}>
                           <td>
@@ -925,7 +894,7 @@ const AdminPage = () => {
                           <td>
                             <div className="relative flex gap-2">
                               <Tooltip content="Editar lote" placement="top">
-                                <Button 
+                                <Button
                                   color="primary"
                                   variant="shadow"
                                   size="sm"
@@ -936,7 +905,7 @@ const AdminPage = () => {
                                 </Button>
                               </Tooltip>
                               <Tooltip content="Eliminar lote" placement="top">
-                                <Button 
+                                <Button
                                   color="danger"
                                   variant="shadow"
                                   size="sm"
@@ -971,7 +940,7 @@ const AdminPage = () => {
                 <span>Añadir Usuario</span>
               </button>
             </div>
-            
+
             <div className="data-table-container">
               <div className="modern-table-wrapper">
                 <table className="modern-table">
@@ -997,7 +966,7 @@ const AdminPage = () => {
                       <td><span className="badge badge-primary">Administrador</span></td>
                       <td>admin@sistema.com</td>
                       <td>
-                        <button 
+                        <button
                           className="badge badge-success"
                           style={{ cursor: 'not-allowed', border: 'none', opacity: '0.8' }}
                           title="El administrador principal no puede ser desactivado"
@@ -1009,7 +978,7 @@ const AdminPage = () => {
                       <td>
                         <div className="relative flex gap-2">
                           <Tooltip content="Editar administrador" placement="top">
-                            <Button 
+                            <Button
                               color="primary"
                               variant="shadow"
                               size="sm"
@@ -1019,19 +988,19 @@ const AdminPage = () => {
                                 name: 'Administrador Sistema',
                                 username: 'admin',
                                 email: 'admin@sistema.com',
-                                role: 'admin',
+                                role: 'administrador',
                                 active: true
                               })}
                             >
                               <span className="mr-1">✏️</span> Editar
                             </Button>
                           </Tooltip>
-                         <Tooltip content="El administrador principal no puede ser eliminado" placement="top">
-                            <Button 
+                          <Tooltip content="El administrador principal no puede ser eliminado" placement="top">
+                            <Button
                               color="danger"
                               variant="shadow"
                               size="sm"
-                               className="floating-action-btn"
+                              className="floating-action-btn"
                               disabled
                               style={{ opacity: '0.5' }}
                             >
@@ -1051,17 +1020,16 @@ const AdminPage = () => {
                         </td>
                         <td>{usuario.username}</td>
                         <td>
-                          <span className={`badge ${
-                            usuario.role === 'director' ? 'badge-info' :
-                            usuario.role === 'padre' ? 'badge-warning' :
-                            'badge-secondary'
-                          }`}>
+                          <span className={`badge ${usuario.role === 'director' ? 'badge-info' :
+                              usuario.role === 'padre' ? 'badge-warning' :
+                                'badge-secondary'
+                            }`}>
                             {usuario.role.charAt(0).toUpperCase() + usuario.role.slice(1)}
                           </span>
                         </td>
                         <td>{usuario.email}</td>
                         <td>
-                          <button 
+                          <button
                             className={`badge ${usuario.active !== false ? 'badge-success' : 'badge-danger'}`}
                             onClick={() => toggleUsuarioStatus(usuario)}
                             style={{ cursor: 'pointer', border: 'none' }}
@@ -1073,7 +1041,7 @@ const AdminPage = () => {
                         <td>
                           <div className="relative flex gap-2">
                             <Tooltip content="Editar usuario" placement="top">
-                              <Button 
+                              <Button
                                 color="primary"
                                 variant="shadow"
                                 size="sm"
@@ -1084,7 +1052,7 @@ const AdminPage = () => {
                               </Button>
                             </Tooltip>
                             <Tooltip content="Eliminar usuario" placement="top">
-                              <Button 
+                              <Button
                                 color="danger"
                                 variant="shadow"
                                 size="sm"
@@ -1107,8 +1075,8 @@ const AdminPage = () => {
       </div>
 
       {/* Modal para añadir/editar centro */}
-      <Modal 
-        isOpen={showAddCentroModal} 
+      <Modal
+        isOpen={showAddCentroModal}
         onClose={() => setShowAddCentroModal(false)}
         size="2xl"
         scrollBehavior="inside"
@@ -1120,154 +1088,154 @@ const AdminPage = () => {
               <ModalHeader className="flex flex-col gap-1">
                 <h3 className="text-xl font-bold">{editingCentro ? 'Editar Centro' : 'Añadir Nuevo Centro'}</h3>
                 <p className="text-small text-default-500">
-                  {editingCentro 
-                    ? 'Modifica la información del centro de vacunación' 
+                  {editingCentro
+                    ? 'Modifica la información del centro de vacunación'
                     : 'Completa la información para crear un nuevo centro de vacunación'}
                 </p>
               </ModalHeader>
-          <ModalBody className="px-6">
-            <form onSubmit={handleSubmitCentro} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="form-group">
-                  <label className="block text-sm font-medium mb-1">Nombre del Centro</label>
-                  <input
-                    type="text"
-                    name="nombre_centro"
-                    value={centroForm.nombre_centro}
-                    onChange={handleCentroFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="block text-sm font-medium mb-1">Nombre Corto</label>
-                  <input
-                    type="text"
-                    name="nombre_corto"
-                    value={centroForm.nombre_corto}
-                    onChange={handleCentroFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="block text-sm font-medium mb-1">Dirección</label>
-                <input
-                  type="text"
-                  name="direccion"
-                  value={centroForm.direccion}
-                  onChange={handleCentroFormChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="form-group">
-                  <label className="block text-sm font-medium mb-1">Latitud</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    name="latitud"
-                    value={centroForm.latitud}
-                    onChange={handleCentroFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="block text-sm font-medium mb-1">Longitud</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    name="longitud"
-                    value={centroForm.longitud}
-                    onChange={handleCentroFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="form-group">
-                  <label className="block text-sm font-medium mb-1">Teléfono</label>
-                  <input
-                    type="tel"
-                    name="telefono"
-                    value={centroForm.telefono}
-                    onChange={handleCentroFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="block text-sm font-medium mb-1">Director</label>
-                  <select
-                    name="director"
-                    value={centroForm.director}
-                    onChange={handleCentroFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">-- Seleccionar Director --</option>
-                    {directores
-                      .filter(director => director.active && director.role === 'director')
-                      .map(director => (
-                        <option key={director.id} value={director.name}>
-                          {director.name}
-                        </option>
-                      ))
-                    }
-                    {directores.filter(director => director.active && director.role === 'director').length === 0 && (
-                      <option value="" disabled>No hay directores disponibles</option>
-                    )}
-                  </select>
-                  {directores.filter(director => director.active && director.role === 'director').length === 0 && (
-                    <div className="text-warning text-xs mt-1">
-                      No hay directores disponibles. Cree uno en la sección "Usuarios".
+              <ModalBody className="px-6">
+                <form onSubmit={handleSubmitCentro} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label className="block text-sm font-medium mb-1">Nombre del Centro</label>
+                      <input
+                        type="text"
+                        name="nombre_centro"
+                        value={centroForm.nombre_centro}
+                        onChange={handleCentroFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        required
+                      />
                     </div>
-                  )}
-                </div>
-              </div>
+                    <div className="form-group">
+                      <label className="block text-sm font-medium mb-1">Nombre Corto</label>
+                      <input
+                        type="text"
+                        name="nombre_corto"
+                        value={centroForm.nombre_corto}
+                        onChange={handleCentroFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
 
-              <div className="form-group">
-                <label className="block text-sm font-medium mb-1">Sitio Web</label>
-                <input
-                  type="url"
-                  name="sitio_web"
-                  value={centroForm.sitio_web}
-                  onChange={handleCentroFormChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="https://..."
-                />
-              </div>
-            </form>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              type="button"
-              color="default"
-              variant="flat"
-              onClick={onClose}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              color="primary"
-              className="font-semibold"
-              onClick={handleSubmitCentro}
-            >
-              {editingCentro ? 'Guardar Cambios' : 'Crear Centro'}
-            </Button>
-          </ModalFooter>
-          </>
+                  <div className="form-group">
+                    <label className="block text-sm font-medium mb-1">Dirección</label>
+                    <input
+                      type="text"
+                      name="direccion"
+                      value={centroForm.direccion}
+                      onChange={handleCentroFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label className="block text-sm font-medium mb-1">Latitud</label>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        name="latitud"
+                        value={centroForm.latitud}
+                        onChange={handleCentroFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="block text-sm font-medium mb-1">Longitud</label>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        name="longitud"
+                        value={centroForm.longitud}
+                        onChange={handleCentroFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label className="block text-sm font-medium mb-1">Teléfono</label>
+                      <input
+                        type="tel"
+                        name="telefono"
+                        value={centroForm.telefono}
+                        onChange={handleCentroFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="block text-sm font-medium mb-1">Director</label>
+                      <select
+                        name="director"
+                        value={centroForm.director}
+                        onChange={handleCentroFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">-- Seleccionar Director --</option>
+                        {directores
+                          .filter(director => director.active && director.role === 'director')
+                          .map(director => (
+                            <option key={director.id} value={director.name}>
+                              {director.name}
+                            </option>
+                          ))
+                        }
+                        {directores.filter(director => director.active && director.role === 'director').length === 0 && (
+                          <option value="" disabled>No hay directores disponibles</option>
+                        )}
+                      </select>
+                      {directores.filter(director => director.active && director.role === 'director').length === 0 && (
+                        <div className="text-warning text-xs mt-1">
+                          No hay directores disponibles. Cree uno en la sección "Usuarios".
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="block text-sm font-medium mb-1">Sitio Web</label>
+                    <input
+                      type="url"
+                      name="sitio_web"
+                      value={centroForm.sitio_web}
+                      onChange={handleCentroFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="https://..."
+                    />
+                  </div>
+                </form>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  type="button"
+                  color="default"
+                  variant="flat"
+                  onClick={onClose}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  color="primary"
+                  className="font-semibold"
+                  onClick={handleSubmitCentro}
+                >
+                  {editingCentro ? 'Guardar Cambios' : 'Crear Centro'}
+                </Button>
+              </ModalFooter>
+            </>
           )}
         </ModalContent>
       </Modal>
 
       {/* Modal para añadir/editar vacuna */}
-      <Modal 
-        isOpen={showAddVacunaModal} 
+      <Modal
+        isOpen={showAddVacunaModal}
         onClose={() => setShowAddVacunaModal(false)}
         size="2xl"
         scrollBehavior="inside"
@@ -1279,146 +1247,146 @@ const AdminPage = () => {
               <ModalHeader className="flex flex-col gap-1">
                 <h3 className="text-xl font-bold">{editingVacuna ? 'Editar Vacuna' : 'Añadir Nueva Vacuna'}</h3>
                 <p className="text-small text-default-500">
-                  {editingVacuna 
-                    ? 'Modifica la información de la vacuna' 
+                  {editingVacuna
+                    ? 'Modifica la información de la vacuna'
                     : 'Completa la información para crear una nueva vacuna'}
                 </p>
               </ModalHeader>
-            <ModalBody className="px-6">
-            <form onSubmit={handleVacunaSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Nombre de la Vacuna</label>
-                  <input
-                    type="text"
-                    name="nombre_vacuna"
-                    value={vacunaForm.nombre_vacuna}
-                    onChange={handleVacunaFormChange}
-                    className="form-control"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Fabricante</label>
-                  <input
-                    type="text"
-                    name="fabricante"
-                    value={vacunaForm.fabricante}
-                    onChange={handleVacunaFormChange}
-                    className="form-control"
-                    required
-                  />
-                </div>
-              </div>
+              <ModalBody className="px-6">
+                <form onSubmit={handleVacunaSubmit} className="modern-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Nombre de la Vacuna</label>
+                      <input
+                        type="text"
+                        name="nombre_vacuna"
+                        value={vacunaForm.nombre_vacuna}
+                        onChange={handleVacunaFormChange}
+                        className="form-control"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Fabricante</label>
+                      <input
+                        type="text"
+                        name="fabricante"
+                        value={vacunaForm.fabricante}
+                        onChange={handleVacunaFormChange}
+                        className="form-control"
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div className="form-group">
-                <label>Tipo de Vacuna</label>
-                <select
-                  name="tipo"
-                  value={vacunaForm.tipo}
-                  onChange={handleVacunaFormChange}
-                  className="form-control"
-                  required
+                  <div className="form-group">
+                    <label>Tipo de Vacuna</label>
+                    <select
+                      name="tipo"
+                      value={vacunaForm.tipo}
+                      onChange={handleVacunaFormChange}
+                      className="form-control"
+                      required
+                    >
+                      <option value="">Seleccione un tipo</option>
+                      <option value="ARNm">ARNm</option>
+                      <option value="Vector viral">Vector viral</option>
+                      <option value="Subunidad proteica">Subunidad proteica</option>
+                      <option value="Virus inactivado">Virus inactivado</option>
+                      <option value="Virus atenuado">Virus atenuado</option>
+                      <option value="Toxoide">Toxoide</option>
+                    </select>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Dosis Requeridas</label>
+                      <input
+                        type="number"
+                        min="1"
+                        name="dosis_requeridas"
+                        value={vacunaForm.dosis_requeridas}
+                        onChange={handleVacunaFormChange}
+                        className="form-control"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Intervalo entre Dosis (días)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        name="intervalo_dosis"
+                        value={vacunaForm.intervalo_dosis}
+                        onChange={handleVacunaFormChange}
+                        className="form-control"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Edad Mínima (meses)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        name="edad_minima"
+                        value={vacunaForm.edad_minima}
+                        onChange={handleVacunaFormChange}
+                        className="form-control"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Edad Máxima (meses)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        name="edad_maxima"
+                        value={vacunaForm.edad_maxima}
+                        onChange={handleVacunaFormChange}
+                        className="form-control"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Descripción</label>
+                    <textarea
+                      name="descripcion"
+                      value={vacunaForm.descripcion}
+                      onChange={handleVacunaFormChange}
+                      className="form-control"
+                      rows="3"
+                    ></textarea>
+                  </div>
+                </form>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  type="button"
+                  color="default"
+                  variant="flat"
+                  onClick={onClose}
                 >
-                  <option value="">Seleccione un tipo</option>
-                  <option value="ARNm">ARNm</option>
-                  <option value="Vector viral">Vector viral</option>
-                  <option value="Subunidad proteica">Subunidad proteica</option>
-                  <option value="Virus inactivado">Virus inactivado</option>
-                  <option value="Virus atenuado">Virus atenuado</option>
-                  <option value="Toxoide">Toxoide</option>
-                </select>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Dosis Requeridas</label>
-                  <input
-                    type="number"
-                    min="1"
-                    name="dosis_requeridas"
-                    value={vacunaForm.dosis_requeridas}
-                    onChange={handleVacunaFormChange}
-                    className="form-control"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Intervalo entre Dosis (días)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    name="intervalo_dosis"
-                    value={vacunaForm.intervalo_dosis}
-                    onChange={handleVacunaFormChange}
-                    className="form-control"
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Edad Mínima (meses)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    name="edad_minima"
-                    value={vacunaForm.edad_minima}
-                    onChange={handleVacunaFormChange}
-                    className="form-control"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Edad Máxima (meses)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    name="edad_maxima"
-                    value={vacunaForm.edad_maxima}
-                    onChange={handleVacunaFormChange}
-                    className="form-control"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Descripción</label>
-                <textarea
-                  name="descripcion"
-                  value={vacunaForm.descripcion}
-                  onChange={handleVacunaFormChange}
-                  className="form-control"
-                  rows="3"
-                ></textarea>
-              </div>
-            </form>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              type="button"
-              color="default"
-              variant="flat"
-              onClick={onClose}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              color="primary"
-              className="font-semibold"
-              onClick={handleVacunaSubmit}
-            >
-              {editingVacuna ? 'Guardar Cambios' : 'Crear Vacuna'}
-            </Button>
-          </ModalFooter>
-          </>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  color="primary"
+                  className="font-semibold"
+                  onClick={handleVacunaSubmit}
+                >
+                  {editingVacuna ? 'Guardar Cambios' : 'Crear Vacuna'}
+                </Button>
+              </ModalFooter>
+            </>
           )}
         </ModalContent>
       </Modal>
 
       {/* Modal para añadir/editar lote */}
-      <Modal 
-        isOpen={showAddLoteModal} 
+      <Modal
+        isOpen={showAddLoteModal}
         onClose={() => setShowAddLoteModal(false)}
         size="2xl"
         scrollBehavior="inside"
@@ -1430,137 +1398,137 @@ const AdminPage = () => {
               <ModalHeader className="flex flex-col gap-1">
                 <h3 className="text-xl font-bold">{editingLote ? 'Editar Lote' : 'Añadir Nuevo Lote'}</h3>
                 <p className="text-small text-default-500">
-                  {editingLote 
-                    ? 'Modifica la información del lote de vacunas' 
+                  {editingLote
+                    ? 'Modifica la información del lote de vacunas'
                     : 'Completa la información para registrar un nuevo lote de vacunas'}
                 </p>
               </ModalHeader>
-            <ModalBody className="px-6">
-            <form onSubmit={handleLoteSubmit}>
-              <div className="form-group">
-                <label>Vacuna</label>
-                <select
-                  name="id_vacuna"
-                  value={loteForm.id_vacuna}
-                  onChange={handleLoteFormChange}
-                  className="form-control"
-                  required
+              <ModalBody className="px-6">
+                <form onSubmit={handleLoteSubmit} className="modern-form">
+                  <div className="form-group">
+                    <label>Vacuna</label>
+                    <select
+                      name="id_vacuna"
+                      value={loteForm.id_vacuna}
+                      onChange={handleLoteFormChange}
+                      className="form-control"
+                      required
+                    >
+                      <option value="">Seleccione una vacuna</option>
+                      {vacunas.map(vacuna => (
+                        <option key={vacuna.id_vacuna} value={vacuna.id_vacuna}>
+                          {vacuna.nombre_vacuna} - {vacuna.fabricante}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Número de Lote</label>
+                    <input
+                      type="text"
+                      name="numero_lote"
+                      value={loteForm.numero_lote}
+                      onChange={handleLoteFormChange}
+                      className="form-control"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Fecha de Fabricación</label>
+                      <input
+                        type="date"
+                        name="fecha_fabricacion"
+                        value={loteForm.fecha_fabricacion}
+                        onChange={handleLoteFormChange}
+                        className="form-control"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Fecha de Vencimiento</label>
+                      <input
+                        type="date"
+                        name="fecha_vencimiento"
+                        value={loteForm.fecha_vencimiento}
+                        onChange={handleLoteFormChange}
+                        className="form-control"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Cantidad de Dosis</label>
+                      <input
+                        type="number"
+                        min="1"
+                        name="cantidad_dosis"
+                        value={loteForm.cantidad_dosis}
+                        onChange={handleLoteFormChange}
+                        className="form-control"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Temperatura de Almacenamiento</label>
+                      <input
+                        type="text"
+                        name="temperatura_almacenamiento"
+                        value={loteForm.temperatura_almacenamiento}
+                        onChange={handleLoteFormChange}
+                        className="form-control"
+                        placeholder="Ej: 2-8°C"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Centro Asignado</label>
+                    <select
+                      name="id_centro"
+                      value={loteForm.id_centro}
+                      onChange={handleLoteFormChange}
+                      className="form-control"
+                    >
+                      <option value="">Seleccione un centro</option>
+                      {centrosVacunacion.map(centro => (
+                        <option key={centro.id_centro} value={centro.id_centro}>
+                          {centro.nombre_centro}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </form>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  type="button"
+                  color="default"
+                  variant="flat"
+                  onClick={onClose}
                 >
-                  <option value="">Seleccione una vacuna</option>
-                  {vacunas.map(vacuna => (
-                    <option key={vacuna.id_vacuna} value={vacuna.id_vacuna}>
-                      {vacuna.nombre_vacuna} - {vacuna.fabricante}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Número de Lote</label>
-                <input
-                  type="text"
-                  name="numero_lote"
-                  value={loteForm.numero_lote}
-                  onChange={handleLoteFormChange}
-                  className="form-control"
-                  required
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Fecha de Fabricación</label>
-                  <input
-                    type="date"
-                    name="fecha_fabricacion"
-                    value={loteForm.fecha_fabricacion}
-                    onChange={handleLoteFormChange}
-                    className="form-control"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Fecha de Vencimiento</label>
-                  <input
-                    type="date"
-                    name="fecha_vencimiento"
-                    value={loteForm.fecha_vencimiento}
-                    onChange={handleLoteFormChange}
-                    className="form-control"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Cantidad de Dosis</label>
-                  <input
-                    type="number"
-                    min="1"
-                    name="cantidad_dosis"
-                    value={loteForm.cantidad_dosis}
-                    onChange={handleLoteFormChange}
-                    className="form-control"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Temperatura de Almacenamiento</label>
-                  <input
-                    type="text"
-                    name="temperatura_almacenamiento"
-                    value={loteForm.temperatura_almacenamiento}
-                    onChange={handleLoteFormChange}
-                    className="form-control"
-                    placeholder="Ej: 2-8°C"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Centro Asignado</label>
-                <select
-                  name="id_centro"
-                  value={loteForm.id_centro}
-                  onChange={handleLoteFormChange}
-                  className="form-control"
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  color="primary"
+                  className="font-semibold"
+                  onClick={handleLoteSubmit}
                 >
-                  <option value="">Seleccione un centro</option>
-                  {centrosVacunacion.map(centro => (
-                    <option key={centro.id_centro} value={centro.id_centro}>
-                      {centro.nombre_centro}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </form>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              type="button"
-              color="default"
-              variant="flat"
-              onClick={onClose}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              color="primary"
-              className="font-semibold"
-              onClick={handleLoteSubmit}
-            >
-              {editingLote ? 'Guardar Cambios' : 'Crear Lote'}
-            </Button>
-          </ModalFooter>
-          </>
+                  {editingLote ? 'Guardar Cambios' : 'Crear Lote'}
+                </Button>
+              </ModalFooter>
+            </>
           )}
         </ModalContent>
       </Modal>
 
       {/* Modal para añadir/editar usuario */}
-      <Modal 
-        isOpen={showAddUsuarioModal} 
+      <Modal
+        isOpen={showAddUsuarioModal}
         onClose={() => setShowAddUsuarioModal(false)}
         size="2xl"
         scrollBehavior="inside"
@@ -1572,128 +1540,131 @@ const AdminPage = () => {
               <ModalHeader className="flex flex-col gap-1">
                 <h3 className="text-xl font-bold">{editingUsuario ? 'Editar Usuario' : 'Añadir Nuevo Usuario'}</h3>
                 <p className="text-small text-default-500">
-                  {editingUsuario 
-                    ? 'Modifica la información del usuario' 
+                  {editingUsuario
+                    ? 'Modifica la información del usuario'
                     : 'Completa la información para crear un nuevo usuario'}
                 </p>
               </ModalHeader>
-            <ModalBody className="px-6">
-            <form onSubmit={handleUsuarioSubmit} className="modern-form">
-              <div className="form-group">
-                <label>Nombre Completo</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={usuarioForm.name}
-                  onChange={handleUsuarioFormChange}
-                  className="form-control"
-                  required
-                  placeholder="Nombre y apellidos"
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Nombre de Usuario</label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={usuarioForm.username}
-                    onChange={handleUsuarioFormChange}
-                    className="form-control"
-                    required
-                    placeholder="Nombre de usuario"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Correo Electrónico</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={usuarioForm.email}
-                    onChange={handleUsuarioFormChange}
-                    className="form-control"
-                    required
-                    placeholder="correo@ejemplo.com"
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Contraseña {editingUsuario && '(Dejar en blanco para mantener)'}</label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={usuarioForm.password}
-                    onChange={handleUsuarioFormChange}
-                    className="form-control"
-                    placeholder="Contraseña"
-                    {...(!editingUsuario ? { required: true } : {})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Confirmar Contraseña</label>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={usuarioForm.confirmPassword}
-                    onChange={handleUsuarioFormChange}
-                    className="form-control"
-                    placeholder="Confirmar contraseña"
-                    {...(!editingUsuario ? { required: true } : {})}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Rol</label>
-                  <select
-                    name="role"
-                    value={usuarioForm.role}
-                    onChange={handleUsuarioFormChange}
-                    className="form-control"
-                    required
-                  >
-                    <option value="director">Director</option>
-                    <option value="doctor">Doctor</option>
-                    <option value="admin">Administrador</option>
-                  </select>
-                </div>
-                <div className="form-group checkbox-group">
-                  <label className="checkbox-container">
+              <ModalBody className="px-6">
+                <form onSubmit={handleUsuarioSubmit} className="modern-form">
+                  <div className="form-group">
+                    <label>Nombre Completo</label>
                     <input
-                      type="checkbox"
-                      name="active"
-                      checked={usuarioForm.active}
+                      type="text"
+                      name="name"
+                      value={usuarioForm.name}
                       onChange={handleUsuarioFormChange}
+                      className="form-control"
+                      required
+                      placeholder="Nombre y apellidos"
                     />
-                    <span className="checkbox-label">Usuario Activo</span>
-                  </label>
-                </div>
-              </div>
-            </form>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              type="button"
-              color="default"
-              variant="flat"
-              onClick={onClose}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              color="primary"
-              className="font-semibold"
-              onClick={handleUsuarioSubmit}
-            >
-              {editingUsuario ? 'Guardar Cambios' : 'Crear Usuario'}
-            </Button>
-          </ModalFooter>
-          </>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Nombre de Usuario</label>
+                      <input
+                        type="text"
+                        name="username"
+                        value={usuarioForm.username}
+                        onChange={handleUsuarioFormChange}
+                        className="form-control"
+                        required
+                        placeholder="Nombre de usuario"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Correo Electrónico</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={usuarioForm.email}
+                        onChange={handleUsuarioFormChange}
+                        className="form-control"
+                        required
+                        placeholder="correo@ejemplo.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Contraseña</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={usuarioForm.password}
+                        onChange={handleUsuarioFormChange}
+                        className="form-control"
+                        placeholder={editingUsuario ? 'Dejar en blanco para no cambiar' : 'Mínimo 6 caracteres'}
+                        required={!editingUsuario}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Confirmar Contraseña</label>
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        value={usuarioForm.confirmPassword}
+                        onChange={handleUsuarioFormChange}
+                        className="form-control"
+                        placeholder={editingUsuario ? 'Dejar en blanco para no cambiar' : 'Repetir contraseña'}
+                        required={!editingUsuario}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Rol</label>
+                    <select
+                      name="role"
+                      value={usuarioForm.role}
+                      onChange={handleUsuarioFormChange}
+                      className="form-control"
+                      required
+                    >
+                      <option value="director">Director</option>
+                      <option value="padre">Padre</option>
+                      <option value="doctor">Doctor</option>
+                      {currentUser.role === 'administrador' && (
+                        <option value="administrador">Administrador</option>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="active"
+                        checked={usuarioForm.active}
+                        onChange={handleUsuarioFormChange}
+                        className="mr-2"
+                      />
+                      Usuario Activo
+                    </label>
+                  </div>
+                </form>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  type="button"
+                  color="default"
+                  variant="flat"
+                  onClick={onClose}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  color="primary"
+                  className="font-semibold"
+                  onClick={handleUsuarioSubmit}
+                >
+                  {editingUsuario ? 'Guardar Cambios' : 'Crear Usuario'}
+                </Button>
+              </ModalFooter>
+            </>
           )}
         </ModalContent>
       </Modal>

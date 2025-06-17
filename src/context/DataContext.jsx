@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { jsonService } from '../services/jsonService.jsx';
-import { usuariosService } from '../services/usuariosService.jsx';
+import { jsonService } from '../services/jsonService';
+import usuariosService from '../services/usuariosService';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
 
@@ -12,212 +13,281 @@ export const DataProvider = ({ children }) => {
   const [lotesVacunas, setLotesVacunas] = useState([]);
   const [dosisAplicadas, setDosisAplicadas] = useState([]);
   const [directores, setDirectores] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
-    // Cargar datos usando los servicios
-    const loadData = () => {
+    let mounted = true;
+
+    const loadData = async () => {
+      if (!mounted || !currentUser) return;
+      setLoading(true);
+      setError(null); // Limpiar errores previos
       try {
-        // Cargar centros
-        const centros = jsonService.getData('Centros_Vacunacion', 'GET') || [];
-        setCentrosVacunacion(centros);
-
-        // Cargar niños y configurar estado activo por defecto
-        const ninosData = jsonService.getData('Niños', 'GET') || [];
-        const ninosWithActive = ninosData.map(nino => ({
-          ...nino,
-          activo: nino.activo !== undefined ? nino.activo : true
-        }));
-        setNinos(ninosWithActive);
-
-        // Cargar tutores y unificar con usuarios con rol 'padre' (para todos los roles)
-        const tutoresData = jsonService.getData('Tutores', 'GET') || [];
-        let padresUsuarios = [];
-        try {
-          padresUsuarios = usuariosService.getUsuarios().filter(u => u.role === 'padre');
-        } catch (e) {}
-        // Unificar por id_tutor (evitar duplicados)
-        const todosTutores = [
-          ...tutoresData,
-          ...padresUsuarios.filter(padre => !tutoresData.some(t => t.id_tutor === padre.id))
-            .map(padre => ({
-              id_tutor: padre.id,
-              nombre: padre.name || padre.nombre || '',
-              apellido: padre.apellido || '',
-              identificacion: padre.identificacion || padre.cedula || padre.username || padre.email || padre.correo || '',
-            }))
+        const requests = [
+          jsonService.getData('Centros_Vacunacion', 'GET'),
+          jsonService.getData('Niños', 'GET'),
+          jsonService.getData('Tutores', 'GET'),
+          jsonService.getData('Vacunas', 'GET'),
+          jsonService.getData('Lotes_Vacunas', 'GET'),
+          jsonService.getData('Dosis_Aplicadas', 'GET'),
+          usuariosService.getUsuarios(),
         ];
-        setTutores(todosTutores);
 
-        // Unificar vacunas de GET, POST y PUT (sin duplicados)
-        const vacunasGet = jsonService.getData('Vacunas', 'GET') || [];
-        const vacunasPost = jsonService.getData('Vacunas', 'POST') || [];
-        const vacunasPut = jsonService.getData('Vacunas', 'PUT') || [];
-        // Prioridad: PUT > POST > GET
-        const vacunasUnificadas = [...vacunasGet, ...vacunasPost, ...vacunasPut].reduce((acc, v) => {
-          if (!v || !v.id_vacuna) return acc;
-          if (!acc.some(x => x.id_vacuna === v.id_vacuna)) acc.push(v);
-          return acc;
-        }, []);
-        setVacunas(vacunasUnificadas);
+        const [
+          centros,
+          ninosData,
+          tutoresData,
+          vacunasData,
+          lotesData,
+          dosisData,
+          usuarios,
+        ] = await Promise.all(requests.map(p => p.catch(e => {
+          console.error(`Error fetching data: ${e.message}`);
+          return null; // Retornar null para evitar fallo total
+        })));
 
-        // Unificar lotes de GET, POST y PUT (sin duplicados)
-        const lotesGet = jsonService.getData('Lotes_Vacunas', 'GET') || [];
-        const lotesPost = jsonService.getData('Lotes_Vacunas', 'POST') || [];
-        const lotesPut = jsonService.getData('Lotes_Vacunas', 'PUT') || [];
-        const lotesUnificados = [...lotesGet, ...lotesPost, ...lotesPut].reduce((acc, l) => {
-          const id_lote = l?.id_lote || l?.id || `${l?.id_vacuna}_${l?.numero_lote}`;
-          if (!id_lote) return acc;
-          if (!acc.some(x => (x.id_lote || x.id) === id_lote)) acc.push({ ...l, id_lote });
-          return acc;
-        }, []);
-        setLotesVacunas(lotesUnificados);
+        if (!mounted) return;
 
-        // Cargar dosis aplicadas
-        const dosisData = jsonService.getData('Dosis_Aplicadas', 'GET') || [];
-        setDosisAplicadas(dosisData);
-
-        // Cargar directores con sus centros asignados
-        const usuarios = usuariosService.getUsuarios();
-        const directoresData = usuarios
-          .filter(user => user.role === 'director')
-          .map(director => ({
-            ...director,
-            centrosAsignados: director.centrosAsignados || []
-          }));
-
-        setDirectores(directoresData);
-      } catch (error) {
-        console.error('Error al cargar datos:', error);
+        setCentrosVacunacion(centros || []);
+        setNinos(ninosData?.map(nino => ({
+          ...nino,
+          activo: nino?.activo !== undefined ? nino.activo : true,
+        }) || []));
+        const padresUsuarios = usuarios?.filter(u => u?.role === 'padre') || [];
+        setTutores([
+          ...(tutoresData || []),
+          ...padresUsuarios
+            .filter(padre => !tutoresData?.some(t => t?.id_tutor === padre?.id_usuario))
+            .map(padre => ({
+              id_tutor: padre?.id_usuario,
+              nombre: padre?.name || padre?.nombre || '',
+              apellido: padre?.apellido || '',
+              identificacion: padre?.identificacion || padre?.cedula || padre?.username || padre?.email || '',
+            })),
+        ]);
+        setVacunas(vacunasData || []);
+        setLotesVacunas(lotesData || []);
+        setDosisAplicadas(dosisData || []);
+        setDirectores(
+          (usuarios || [])
+            .filter(user => user?.role === 'director')
+            .map(director => ({
+              ...director,
+              centrosAsignados: director?.centrosAsignados || [],
+            })) || []
+        );
+      } catch (err) {
+        if (mounted) {
+          setError(err.message || 'Error al cargar datos');
+          console.error('General error loading data:', err);
+        }
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
 
     loadData();
-  }, []);
 
-  // Funciones para actualizar datos
-  const handleUpdateNino = (updatedNino) => {
-    setNinos((prevNinos) =>
-      prevNinos.map((nino) =>
-        nino.id_niño === updatedNino.id_niño ? updatedNino : nino
-      )
-    );
+    return () => { mounted = false; };
+  }, [currentUser]);
+
+  const handleUpdateNino = async (updatedNino) => {
+    try {
+      await jsonService.saveData('Niños', 'PUT', updatedNino);
+      setNinos(prevNinos =>
+        prevNinos.map(nino =>
+          nino.id_niño === updatedNino.id_niño ? updatedNino : nino
+        )
+      );
+    } catch (error) {
+      console.error('Error updating niño:', error);
+    }
   };
 
-  const handleUpdateTutor = (updatedTutor) => {
-    setTutores((prevTutores) =>
-      prevTutores.map((tutor) =>
-        tutor.id_tutor === updatedTutor.id_tutor ? updatedTutor : tutor
-      )
-    );
+  const handleUpdateTutor = async (updatedTutor) => {
+    try {
+      await jsonService.saveData('Tutores', 'PUT', updatedTutor);
+      setTutores(prevTutores =>
+        prevTutores.map(tutor =>
+          tutor.id_tutor === updatedTutor.id_tutor ? updatedTutor : tutor
+        )
+      );
+    } catch (error) {
+      console.error('Error updating tutor:', error);
+    }
   };
 
-  const handleNinoAdd = (newNino) => {
-    setNinos((prevNinos) => [...prevNinos, newNino]);
+  const handleNinoAdd = async (newNino) => {
+    try {
+      const savedNino = await jsonService.saveData('Niños', 'POST', newNino);
+      setNinos(prevNinos => [...prevNinos, savedNino]);
+    } catch (error) {
+      console.error('Error adding niño:', error);
+    }
   };
 
-  const handleTutorAdd = (newTutor) => {
-    setTutores((prevTutores) => [...prevTutores, newTutor]);
+  const handleTutorAdd = async (newTutor) => {
+    try {
+      const savedTutor = await jsonService.saveData('Tutores', 'POST', newTutor);
+      setTutores(prevTutores => [...prevTutores, savedTutor]);
+    } catch (error) {
+      console.error('Error adding tutor:', error);
+    }
   };
 
-  const togglePacienteStatus = (pacienteId) => {
-    setNinos(prevNinos => 
-      prevNinos.map(nino => 
-        nino.id_niño === pacienteId 
-          ? { ...nino, activo: !nino.activo }
-          : nino
-      )
-    );
+  const togglePacienteStatus = async (pacienteId) => {
+    try {
+      const nino = ninos.find(n => n.id_niño === pacienteId);
+      if (!nino) return;
+      const updatedNino = { ...nino, activo: !nino.activo };
+      await jsonService.saveData('Niños', 'PUT', updatedNino);
+      setNinos(prevNinos =>
+        prevNinos.map(n =>
+          n.id_niño === pacienteId ? { ...n, activo: !n.activo } : n
+        )
+      );
+    } catch (error) {
+      console.error('Error toggling paciente status:', error);
+    }
   };
 
-  // Funciones para obtener datos
   const getTutorNombre = (idTutor) => {
-    const tutor = tutores.find((t) => t.id_tutor === idTutor);
-    return tutor ? `${tutor.nombre} ${tutor.apellido}` : "No especificado";
+    const tutor = tutores.find(t => t.id_tutor === idTutor);
+    return tutor ? `${tutor.nombre} ${tutor.apellido || ''}` : 'No especificado';
   };
 
-  const getHistorialVacunas = (ninoId) => {
-    if (!dosisAplicadas) return [];
-    const dosisDelNino = dosisAplicadas.filter(d => d.id_niño === ninoId);
-    return dosisDelNino.map(dosis => {
-      const lote = lotesVacunas.find(l => l.id_lote === dosis.id_lote);
-      const vacuna = vacunas.find(v => v.id_vacuna === lote?.id_vacuna);
-      return {
-        ...dosis,
-        nombre_vacuna: vacuna?.nombre_vacuna || 'Desconocida',
-        numero_lote: lote?.numero_lote || 'N/A'
-      };
-    });
+  const getHistorialVacunas = async (ninoId) => {
+    try {
+      const dosisDelNino = await jsonService.getData('Dosis_Aplicadas', 'GET', { id_niño: ninoId });
+      return dosisDelNino.map(dosis => {
+        const lote = lotesVacunas.find(l => l.id_lote === dosis.id_lote);
+        const vacuna = vacunas.find(v => v.id_vacuna === lote?.id_vacuna);
+        return {
+          ...dosis,
+          nombre_vacuna: vacuna?.nombre_vacuna || 'Desconocida',
+          numero_lote: lote?.numero_lote || 'N/A',
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching historial vacunas:', error);
+      return [];
+    }
   };
 
-  const getVacunasFaltantes = (ninoId) => {
-    const historial = getHistorialVacunas(ninoId);
-    const vacunasAplicadas = historial.map(h => h.nombre_vacuna);
-    
-    // Lista de vacunas requeridas
-    const vacunasRequeridas = vacunas.map(v => v.nombre_vacuna);
-    
-    return vacunasRequeridas.filter(vacuna => !vacunasAplicadas.includes(vacuna));
+  const getVacunasFaltantes = async (ninoId) => {
+    try {
+      const historial = await getHistorialVacunas(ninoId);
+      const vacunasAplicadas = historial.map(h => h.nombre_vacuna);
+      const vacunasRequeridas = vacunas.map(v => v.nombre_vacuna);
+      return vacunasRequeridas.filter(vacuna => !vacunasAplicadas.includes(vacuna));
+    } catch (error) {
+      console.error('Error calculating vacunas faltantes:', error);
+      return [];
+    }
   };
 
-  // Funciones para directores
-  const updateDirectorCentros = (directorId, newCentros) => {
-    setDirectores(prevDirectores => 
-      prevDirectores.map(director => 
-        director.id === directorId 
-          ? { ...director, centrosAsignados: [...newCentros] }
-          : director
-      )
-    );
+  const getCoverageReport = async (idCentro) => {
+    try {
+      return await jsonService.getData('Reportes', 'GET', { type: 'coverage', id_centro: idCentro });
+    } catch (error) {
+      console.error('Error fetching coverage report:', error);
+      return [];
+    }
+  };
+
+  const getPendingAppointments = async (idNiño) => {
+    try {
+      return await jsonService.getData('Reportes', 'GET', { type: 'pending-appointments', id_niño: idNiño });
+    } catch (error) {
+      console.error('Error fetching pending appointments:', error);
+      return [];
+    }
+  };
+
+  const getExpiredBatches = async (idCentro) => {
+    try {
+      return await jsonService.getData('Reportes', 'GET', { type: 'expired-batches', id_centro: idCentro });
+    } catch (error) {
+      console.error('Error fetching expired batches:', error);
+      return [];
+    }
+  };
+
+  const getIncompleteSchedules = async (idNiño) => {
+    try {
+      return await jsonService.getData('Reportes', 'GET', { type: 'incomplete-schedules', id_niño: idNiño });
+    } catch (error) {
+      console.error('Error fetching incomplete schedules:', error);
+      return [];
+    }
+  };
+
+  const updateDirectorCentros = async (directorId, newCentros) => {
+    try {
+      const director = directores.find(d => d.id_usuario === directorId);
+      if (!director) return;
+      const updatedDirector = { ...director, centrosAsignados: newCentros };
+      await jsonService.saveData('Usuarios', 'PUT', updatedDirector);
+      setDirectores(prevDirectores =>
+        prevDirectores.map(d =>
+          d.id_usuario === directorId ? { ...d, centrosAsignados: [...newCentros] } : d
+        )
+      );
+    } catch (error) {
+      console.error('Error updating director centros:', error);
+    }
   };
 
   const getCentrosDisponibles = (excludeDirectorId = null) => {
     const centrosAsignados = directores
-      .filter(director => director.id !== excludeDirectorId)
+      .filter(director => director.id_usuario !== excludeDirectorId)
       .flatMap(director => director.centrosAsignados);
-    
-    return centrosVacunacion.filter(centro => 
-      !centrosAsignados.includes(centro.id_centro)
-    );
+    return centrosVacunacion.filter(centro => !centrosAsignados.includes(centro.id_centro));
   };
 
   const getCentrosAsignadosADirector = (directorId) => {
-    const director = directores.find(d => d.id === directorId);
+    const director = directores.find(d => d.id_usuario === directorId);
     return director ? director.centrosAsignados : [];
   };
 
   return (
-    <DataContext.Provider value={{
-      // Datos
-      centrosVacunacion,
-      setCentrosVacunacion,
-      ninos,
-      setNinos,
-      tutores,
-      setTutores,
-      vacunas,
-      setVacunas,
-      lotesVacunas,
-      setLotesVacunas,
-      dosisAplicadas,
-      setDosisAplicadas,
-      directores,
-      setDirectores,
-      handleUpdateNino,
-      handleUpdateTutor,
-      handleNinoAdd,
-      handleTutorAdd,
-      togglePacienteStatus,
-      
-      // Funciones para obtener datos
-      getTutorNombre,
-      getHistorialVacunas,
-      getVacunasFaltantes,
-      
-      // Funciones para directores
-      updateDirectorCentros,
-      getCentrosDisponibles,
-      getCentrosAsignadosADirector
-    }}>
+    <DataContext.Provider
+      value={{
+        centrosVacunacion,
+        setCentrosVacunacion,
+        ninos,
+        setNinos,
+        tutores,
+        setTutores,
+        vacunas,
+        setVacunas,
+        lotesVacunas,
+        setLotesVacunas,
+        dosisAplicadas,
+        setDosisAplicadas,
+        directores,
+        setDirectores,
+        handleUpdateNino,
+        handleUpdateTutor,
+        handleNinoAdd,
+        handleTutorAdd,
+        togglePacienteStatus,
+        getTutorNombre,
+        getHistorialVacunas,
+        getVacunasFaltantes,
+        getCoverageReport,
+        getPendingAppointments,
+        getExpiredBatches,
+        getIncompleteSchedules,
+        updateDirectorCentros,
+        getCentrosDisponibles,
+        getCentrosAsignadosADirector,
+        loading,
+        error,
+      }}
+    >
       {children}
     </DataContext.Provider>
   );

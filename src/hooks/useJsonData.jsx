@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { jsonService } from '../services/jsonService';
 
-export const useJsonData = (endpoint, method = 'GET') => {
+export const useJsonData = (endpoint, method = 'GET', params = {}) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -9,7 +9,7 @@ export const useJsonData = (endpoint, method = 'GET') => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = jsonService.getData(endpoint, method);
+        const result = await jsonService.getData(endpoint, method, params);
         setData(result);
       } catch (err) {
         setError(err.message);
@@ -19,13 +19,17 @@ export const useJsonData = (endpoint, method = 'GET') => {
     };
 
     fetchData();
-  }, [endpoint, method]);
+  }, [endpoint, method, params]); 
 
-  const updateData = async (newData) => {
+  const updateData = async (newData, updateMethod = 'POST') => {
     try {
-      jsonService.saveData(endpoint, method, newData);
-      setData(newData);
-      return true;
+      const result = await jsonService.saveData(endpoint, updateMethod, newData);
+      if (result) {
+        const updatedData = await jsonService.getData(endpoint, 'GET', params);
+        setData(updatedData);
+        return true;
+      }
+      return false;
     } catch (err) {
       setError(err.message);
       return false;

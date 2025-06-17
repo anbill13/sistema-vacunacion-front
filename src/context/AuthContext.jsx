@@ -1,33 +1,41 @@
+// src/context/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentPage, setCurrentPage] = useState('public'); // 'public', 'auth', 'dashboard'
+  const [currentPage, setCurrentPage] = useState('public');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
-    
     if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
+      const user = JSON.parse(savedUser);
+      // Normalize role
+      setCurrentUser({ ...user, role: user.rol || user.role });
       setCurrentPage('dashboard');
     } else {
       setCurrentPage('public');
     }
+    setIsInitialized(true);
   }, []);
 
   const handleLogin = (user) => {
-    setCurrentUser(user);
-    localStorage.setItem('currentUser', JSON.stringify(user));
+    // Normalize role
+    const normalizedUser = { ...user, role: user.rol || user.role };
+    setCurrentUser(normalizedUser);
+    localStorage.setItem('currentUser', JSON.stringify(normalizedUser));
+    localStorage.setItem('authToken', user.token || ''); // Store token if provided
     setCurrentPage('dashboard');
+    return normalizedUser; // Return user for role-based tab selection
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('authToken');
     setCurrentPage('public');
-    // Mantener la preferencia de modo oscuro al cerrar sesión
     const darkMode = localStorage.getItem('darkMode');
     localStorage.setItem('publicDarkMode', darkMode);
   };
@@ -40,15 +48,17 @@ export const AuthProvider = ({ children }) => {
     setCurrentPage('public');
   };
 
+  if (!isInitialized) return null;
+
   return (
-    <AuthContext.Provider 
-      value={{ 
-        currentUser, 
-        currentPage, 
-        handleLogin, 
-        handleLogout, 
-        showAuthPage, 
-        showPublicPage 
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        currentPage,
+        handleLogin,
+        handleLogout,
+        showAuthPage,
+        showPublicPage,
       }}
     >
       {children}
@@ -56,4 +66,10 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

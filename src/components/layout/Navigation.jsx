@@ -1,3 +1,4 @@
+// src/components/layout/Navigation.jsx
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Tabs, Tab } from "@nextui-org/react";
@@ -11,7 +12,7 @@ const Navigation = ({ activeTab, setActiveTab }) => {
       id: "centros",
       label: "Centros de Vacunación",
       icon: "🏥",
-      roles: ["all"] // Available for all users
+      roles: ["all"] 
     },
     {
       id: "pacientes",
@@ -32,7 +33,7 @@ const Navigation = ({ activeTab, setActiveTab }) => {
       roles: ["padre"]
     },
     {
-    id: "admin",
+      id: "admin",
       label: "Administración",
       icon: "⚙️",
       roles: ["administrador"]
@@ -40,10 +41,12 @@ const Navigation = ({ activeTab, setActiveTab }) => {
   ];
 
   // Filter tabs based on user role
-  const filteredTabs = tabs.filter(tab => 
-    tab.roles.includes("all") || 
-    (currentUser?.role && tab.roles.includes(currentUser.role))
-  );
+  const filteredTabs = currentUser?.role === 'administrador'
+    ? tabs // Administrador ve todas las pestañas
+    : tabs.filter(tab => 
+        tab.roles.includes("all") || 
+        (currentUser?.role && tab.roles.includes(currentUser.role))
+      );
 
   return (
     <div className="w-full px-4 py-2">
@@ -53,7 +56,7 @@ const Navigation = ({ activeTab, setActiveTab }) => {
         onSelectionChange={setActiveTab}
         color="primary"
         variant="underlined"
-          classNames={{
+        classNames={{
           tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
           cursor: "w-full bg-primary",
           tab: "max-w-fit px-2 h-12",

@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  CardBody, 
-  CardHeader, 
-  Divider, 
-  Button, 
-  Modal, 
-  ModalContent, 
-  ModalHeader, 
-  ModalBody, 
-  ModalFooter, 
-  Tabs, 
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  Divider,
+  Button,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Tabs,
   Tab,
   Tooltip
 } from "@nextui-org/react";
 import { useData } from '../../context/DataContext';
 import { jsonService } from '../../services/jsonService.jsx';
-import { usuariosService } from '../../services/usuariosService.jsx';
+import usuariosService from '../../services/usuariosService.jsx';
 import { useAuth } from '../../context/AuthContext';
 
 const MisCentros = () => {
@@ -65,13 +65,13 @@ const MisCentros = () => {
     setShowVacunaModal(true);
   };
   const handleDeleteVacuna = (vac) => {
-    if(window.confirm(`¿Eliminar la vacuna ${vac.nombre_vacuna}?`)) {
-  jsonService.saveData('Vacunas', 'DELETE', { id: vac.id_vacuna });
-}
+    if (window.confirm(`¿Eliminar la vacuna ${vac.nombre_vacuna}?`)) {
+      jsonService.saveData('Vacunas', 'DELETE', { id: vac.id_vacuna });
+    }
   };
   const handleVacunaFormChange = e => {
     const { name, value } = e.target;
-    setVacunaForm({ ...vacunaForm, [name]: ['dosis_requeridas','intervalo_dosis','edad_minima','edad_maxima'].includes(name) ? parseInt(value,10) : value });
+    setVacunaForm({ ...vacunaForm, [name]: ['dosis_requeridas', 'intervalo_dosis', 'edad_minima', 'edad_maxima'].includes(name) ? parseInt(value, 10) : value });
   };
   const handleVacunaSubmit = async e => {
     e.preventDefault();
@@ -83,12 +83,12 @@ const MisCentros = () => {
         fecha_actualizacion: new Date().toISOString()
       };
       await jsonService.saveData('Vacunas', vacunaEditada, 'PUT');
-      
+
     } else {
       // Crear nueva vacuna (POST)
       const newVacuna = {
         ...vacunaForm,
-        id_vacuna: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `vacuna-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        id_vacuna: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `vacuna-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         fecha_creacion: new Date().toISOString(),
         fecha_actualizacion: new Date().toISOString()
       };
@@ -109,13 +109,13 @@ const MisCentros = () => {
     setShowLoteModal(true);
   };
   const handleDeleteLote = (lote) => {
-    if(window.confirm(`¿Eliminar el lote ${lote.numero_lote}?`)) {
-  jsonService.saveData('Lotes_Vacunas', 'DELETE', { id: lote.id_lote });
-}
+    if (window.confirm(`¿Eliminar el lote ${lote.numero_lote}?`)) {
+      jsonService.saveData('Lotes_Vacunas', 'DELETE', { id: lote.id_lote });
+    }
   };
   const handleLoteFormChange = e => {
     const { name, value } = e.target;
-    setLoteForm({ ...loteForm, [name]: name === 'cantidad_dosis' ? parseInt(value,10) : value });
+    setLoteForm({ ...loteForm, [name]: name === 'cantidad_dosis' ? parseInt(value, 10) : value });
   };
   const handleLoteSubmit = async e => {
     e.preventDefault();
@@ -132,7 +132,7 @@ const MisCentros = () => {
       // Crear nuevo lote (POST)
       const newLote = {
         ...loteForm,
-        id_lote: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `lote-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        id_lote: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `lote-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         cantidad_disponible: typeof loteForm.cantidad_dosis === 'number' ? loteForm.cantidad_dosis : 0,
         fecha_creacion: new Date().toISOString(),
         fecha_actualizacion: new Date().toISOString()
@@ -291,7 +291,7 @@ const MisCentros = () => {
                               setCheckedDoctors(prev => prev.filter(docId => docId !== id));
                             }}
                           >
-                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M6 7h12M10 11v6m4-6v6M5 7l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" stroke="#e00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M6 7h12M10 11v6m4-6v6M5 7l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" stroke="#e00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                           </Button>
                         </li>
                       );
@@ -302,7 +302,7 @@ const MisCentros = () => {
             </Card>
             <div className="mt-2">
               <Button color="primary" fullWidth onClick={() => handleOpenModal(centro)} className="font-semibold flex items-center gap-2 text-base">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#06b6d4"/></svg>
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#06b6d4" /></svg>
                 Asignar doctores
               </Button>
             </div>
@@ -503,137 +503,137 @@ const MisCentros = () => {
         </ModalContent>
       </Modal>
       <Modal isOpen={showVacunaModal} onClose={() => setShowVacunaModal(false)} size="2xl" scrollBehavior="inside" backdrop="blur">
-  <ModalContent>
-    {(onClose) => (
-      <>
-        <ModalHeader className="flex flex-col gap-1">
-          <h3 className="text-xl font-bold">{editingVacuna ? 'Editar Vacuna' : 'Añadir Nueva Vacuna'}</h3>
-          <p className="text-small text-default-500">
-            {editingVacuna ? 'Modifica la información de la vacuna' : 'Completa la información para crear una nueva vacuna'}
-          </p>
-        </ModalHeader>
-        <ModalBody className="px-6">
-          <form onSubmit={handleVacunaSubmit}>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Nombre de la Vacuna</label>
-                <input type="text" name="nombre_vacuna" value={vacunaForm.nombre_vacuna} onChange={handleVacunaFormChange} className="form-control" required />
-              </div>
-              <div className="form-group">
-                <label>Fabricante</label>
-                <input type="text" name="fabricante" value={vacunaForm.fabricante} onChange={handleVacunaFormChange} className="form-control" required />
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Tipo de Vacuna</label>
-              <select name="tipo" value={vacunaForm.tipo} onChange={handleVacunaFormChange} className="form-control" required>
-                <option value="">Seleccione un tipo</option>
-                <option value="ARNm">ARNm</option>
-                <option value="Vector viral">Vector viral</option>
-                <option value="Subunidad proteica">Subunidad proteica</option>
-                <option value="Virus inactivado">Virus inactivado</option>
-                <option value="Virus atenuado">Virus atenuado</option>
-                <option value="Toxoide">Toxoide</option>
-              </select>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Dosis Requeridas</label>
-                <input type="number" min="1" name="dosis_requeridas" value={vacunaForm.dosis_requeridas} onChange={handleVacunaFormChange} className="form-control" required />
-              </div>
-              <div className="form-group">
-                <label>Intervalo entre Dosis (días)</label>
-                <input type="number" min="0" name="intervalo_dosis" value={vacunaForm.intervalo_dosis} onChange={handleVacunaFormChange} className="form-control" />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Edad Mínima (meses)</label>
-                <input type="number" min="0" name="edad_minima" value={vacunaForm.edad_minima} onChange={handleVacunaFormChange} className="form-control" />
-              </div>
-              <div className="form-group">
-                <label>Edad Máxima (meses)</label>
-                <input type="number" min="0" name="edad_maxima" value={vacunaForm.edad_maxima} onChange={handleVacunaFormChange} className="form-control" />
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Descripción</label>
-              <textarea name="descripcion" value={vacunaForm.descripcion} onChange={handleVacunaFormChange} className="form-control" rows="3"></textarea>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button type="button" color="default" variant="flat" onClick={onClose}>Cancelar</Button>
-              <Button type="submit" color="primary" className="font-semibold">{editingVacuna ? 'Guardar Cambios' : 'Crear Vacuna'}</Button>
-            </div>
-          </form>
-        </ModalBody>
-      </>
-    )}
-  </ModalContent>
-</Modal>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <h3 className="text-xl font-bold">{editingVacuna ? 'Editar Vacuna' : 'Añadir Nueva Vacuna'}</h3>
+                <p className="text-small text-default-500">
+                  {editingVacuna ? 'Modifica la información de la vacuna' : 'Completa la información para crear una nueva vacuna'}
+                </p>
+              </ModalHeader>
+              <ModalBody className="px-6">
+                <form onSubmit={handleVacunaSubmit}>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Nombre de la Vacuna</label>
+                      <input type="text" name="nombre_vacuna" value={vacunaForm.nombre_vacuna} onChange={handleVacunaFormChange} className="form-control" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Fabricante</label>
+                      <input type="text" name="fabricante" value={vacunaForm.fabricante} onChange={handleVacunaFormChange} className="form-control" required />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Tipo de Vacuna</label>
+                    <select name="tipo" value={vacunaForm.tipo} onChange={handleVacunaFormChange} className="form-control" required>
+                      <option value="">Seleccione un tipo</option>
+                      <option value="ARNm">ARNm</option>
+                      <option value="Vector viral">Vector viral</option>
+                      <option value="Subunidad proteica">Subunidad proteica</option>
+                      <option value="Virus inactivado">Virus inactivado</option>
+                      <option value="Virus atenuado">Virus atenuado</option>
+                      <option value="Toxoide">Toxoide</option>
+                    </select>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Dosis Requeridas</label>
+                      <input type="number" min="1" name="dosis_requeridas" value={vacunaForm.dosis_requeridas} onChange={handleVacunaFormChange} className="form-control" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Intervalo entre Dosis (días)</label>
+                      <input type="number" min="0" name="intervalo_dosis" value={vacunaForm.intervalo_dosis} onChange={handleVacunaFormChange} className="form-control" />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Edad Mínima (meses)</label>
+                      <input type="number" min="0" name="edad_minima" value={vacunaForm.edad_minima} onChange={handleVacunaFormChange} className="form-control" />
+                    </div>
+                    <div className="form-group">
+                      <label>Edad Máxima (meses)</label>
+                      <input type="number" min="0" name="edad_maxima" value={vacunaForm.edad_maxima} onChange={handleVacunaFormChange} className="form-control" />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Descripción</label>
+                    <textarea name="descripcion" value={vacunaForm.descripcion} onChange={handleVacunaFormChange} className="form-control" rows="3"></textarea>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button type="button" color="default" variant="flat" onClick={onClose}>Cancelar</Button>
+                    <Button type="submit" color="primary" className="font-semibold">{editingVacuna ? 'Guardar Cambios' : 'Crear Vacuna'}</Button>
+                  </div>
+                </form>
+              </ModalBody>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
       <Modal isOpen={showLoteModal} onClose={() => setShowLoteModal(false)} size="2xl" scrollBehavior="inside" backdrop="blur">
-  <ModalContent>
-    {(onClose) => (
-      <>
-        <ModalHeader className="flex flex-col gap-1">
-          <h3 className="text-xl font-bold">{editingLote ? 'Editar Lote' : 'Añadir Nuevo Lote'}</h3>
-          <p className="text-small text-default-500">
-            {editingLote ? 'Modifica la información del lote de vacunas' : 'Completa la información para registrar un nuevo lote de vacunas'}
-          </p>
-        </ModalHeader>
-        <ModalBody className="px-6">
-          <form onSubmit={handleLoteSubmit}>
-            <div className="form-group">
-              <label>Vacuna</label>
-              <select name="id_vacuna" value={loteForm.id_vacuna} onChange={handleLoteFormChange} className="form-control" required>
-                <option value="">Seleccione una vacuna</option>
-                {vacunas && vacunas.map(v => (
-                  <option key={v.id_vacuna} value={v.id_vacuna}>{v.nombre_vacuna}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Número de Lote</label>
-              <input type="text" name="numero_lote" value={loteForm.numero_lote} onChange={handleLoteFormChange} className="form-control" required />
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Fecha de Fabricación</label>
-                <input type="date" name="fecha_fabricacion" value={loteForm.fecha_fabricacion} onChange={handleLoteFormChange} className="form-control" />
-              </div>
-              <div className="form-group">
-                <label>Fecha de Vencimiento</label>
-                <input type="date" name="fecha_vencimiento" value={loteForm.fecha_vencimiento} onChange={handleLoteFormChange} className="form-control" required />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Cantidad de Dosis</label>
-                <input type="number" min="1" name="cantidad_dosis" value={loteForm.cantidad_dosis} onChange={handleLoteFormChange} className="form-control" required />
-              </div>
-              <div className="form-group">
-                <label>Temperatura de Almacenamiento</label>
-                <input type="text" name="temperatura_almacenamiento" value={loteForm.temperatura_almacenamiento} onChange={handleLoteFormChange} className="form-control" placeholder="Ej: 2-8°C" />
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Centro Asignado</label>
-              <select name="id_centro" value={loteForm.id_centro} onChange={handleLoteFormChange} className="form-control" required>
-                <option value="">Seleccione un centro</option>
-                {centrosDirectorOptions.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button type="button" color="default" variant="flat" onClick={onClose}>Cancelar</Button>
-              <Button type="submit" color="primary" className="font-semibold">{editingLote ? 'Guardar Cambios' : 'Crear Lote'}</Button>
-            </div>
-          </form>
-        </ModalBody>
-      </>
-    )}
-  </ModalContent>
-</Modal>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <h3 className="text-xl font-bold">{editingLote ? 'Editar Lote' : 'Añadir Nuevo Lote'}</h3>
+                <p className="text-small text-default-500">
+                  {editingLote ? 'Modifica la información del lote de vacunas' : 'Completa la información para registrar un nuevo lote de vacunas'}
+                </p>
+              </ModalHeader>
+              <ModalBody className="px-6">
+                <form onSubmit={handleLoteSubmit}>
+                  <div className="form-group">
+                    <label>Vacuna</label>
+                    <select name="id_vacuna" value={loteForm.id_vacuna} onChange={handleLoteFormChange} className="form-control" required>
+                      <option value="">Seleccione una vacuna</option>
+                      {vacunas && vacunas.map(v => (
+                        <option key={v.id_vacuna} value={v.id_vacuna}>{v.nombre_vacuna}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Número de Lote</label>
+                    <input type="text" name="numero_lote" value={loteForm.numero_lote} onChange={handleLoteFormChange} className="form-control" required />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Fecha de Fabricación</label>
+                      <input type="date" name="fecha_fabricacion" value={loteForm.fecha_fabricacion} onChange={handleLoteFormChange} className="form-control" />
+                    </div>
+                    <div className="form-group">
+                      <label>Fecha de Vencimiento</label>
+                      <input type="date" name="fecha_vencimiento" value={loteForm.fecha_vencimiento} onChange={handleLoteFormChange} className="form-control" required />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Cantidad de Dosis</label>
+                      <input type="number" min="1" name="cantidad_dosis" value={loteForm.cantidad_dosis} onChange={handleLoteFormChange} className="form-control" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Temperatura de Almacenamiento</label>
+                      <input type="text" name="temperatura_almacenamiento" value={loteForm.temperatura_almacenamiento} onChange={handleLoteFormChange} className="form-control" placeholder="Ej: 2-8°C" />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Centro Asignado</label>
+                    <select name="id_centro" value={loteForm.id_centro} onChange={handleLoteFormChange} className="form-control" required>
+                      <option value="">Seleccione un centro</option>
+                      {centrosDirectorOptions.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button type="button" color="default" variant="flat" onClick={onClose}>Cancelar</Button>
+                    <Button type="submit" color="primary" className="font-semibold">{editingLote ? 'Guardar Cambios' : 'Crear Lote'}</Button>
+                  </div>
+                </form>
+              </ModalBody>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 };
