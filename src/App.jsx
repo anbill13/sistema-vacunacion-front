@@ -13,6 +13,8 @@ import { DataProvider } from "./context/DataContext";
 
 // Components
 import Header from "./components/layout/Header";
+import SyncStatus from "./components/layout/SyncStatus";
+import useSyncQueue from "./hooks/useSyncQueue";
 import Navigation from "./components/layout/Navigation";
 import CentrosPage from "./components/centros/CentrosPage";
 import MisCentros from "./components/centros/MisCentros";
@@ -31,6 +33,14 @@ L.Icon.Default.mergeOptions({
 });
 
 function AppContent() {
+  // Hook para sincronización offline/online
+  // syncFn debe ser reemplazado por la función real que sincroniza con el backend
+  const { pending, syncing, manualSync } = useSyncQueue(async (change) => {
+    // Aquí deberás implementar la lógica real de sincronización con tu backend
+    // Por ejemplo: await fetch('/api/sync', { method: 'POST', body: JSON.stringify(change) })
+    // Por ahora, solo simula éxito:
+    return Promise.resolve();
+  });
   const [activeTab, setActiveTab] = useState("centros");
   const [showLoginModal, setShowLoginModal] = useState(false);
   const { currentPage, showAuthPage, showPublicPage, handleLogin } = useAuth();
@@ -93,6 +103,8 @@ function AppContent() {
           />
         </Modal>
       )}
+      {/* Indicador de sincronización offline/online */}
+      <SyncStatus pending={pending} syncing={syncing} onSync={manualSync} />
     </div>
   );
 }

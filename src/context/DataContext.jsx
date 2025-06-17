@@ -52,24 +52,26 @@ export const DataProvider = ({ children }) => {
         const vacunasGet = jsonService.getData('Vacunas', 'GET') || [];
         const vacunasPost = jsonService.getData('Vacunas', 'POST') || [];
         const vacunasPut = jsonService.getData('Vacunas', 'PUT') || [];
-        // Prioridad: PUT > POST > GET
+        const vacunasDelete = jsonService.getData('Vacunas', 'DELETE') || [];
+        // Prioridad: PUT > POST > GET, y filtrar eliminadas
         const vacunasUnificadas = [...vacunasGet, ...vacunasPost, ...vacunasPut].reduce((acc, v) => {
           if (!v || !v.id_vacuna) return acc;
           if (!acc.some(x => x.id_vacuna === v.id_vacuna)) acc.push(v);
           return acc;
-        }, []);
+        }, []).filter(v => !vacunasDelete.includes(v.id_vacuna));
         setVacunas(vacunasUnificadas);
 
         // Unificar lotes de GET, POST y PUT (sin duplicados)
         const lotesGet = jsonService.getData('Lotes_Vacunas', 'GET') || [];
         const lotesPost = jsonService.getData('Lotes_Vacunas', 'POST') || [];
         const lotesPut = jsonService.getData('Lotes_Vacunas', 'PUT') || [];
+        const lotesDelete = jsonService.getData('Lotes_Vacunas', 'DELETE') || [];
         const lotesUnificados = [...lotesGet, ...lotesPost, ...lotesPut].reduce((acc, l) => {
           const id_lote = l?.id_lote || l?.id || `${l?.id_vacuna}_${l?.numero_lote}`;
           if (!id_lote) return acc;
           if (!acc.some(x => (x.id_lote || x.id) === id_lote)) acc.push({ ...l, id_lote });
           return acc;
-        }, []);
+        }, []).filter(l => !lotesDelete.includes(l.id_lote));
         setLotesVacunas(lotesUnificados);
 
         // Cargar dosis aplicadas

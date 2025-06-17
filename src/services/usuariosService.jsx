@@ -3,7 +3,7 @@ const adminUser = {
   id: 'admin-1',
   username: 'admin',
   password: 'admin123',
-  role: 'administrador',
+  role: 'administrador', // solo este rol
   name: 'Administrador Sistema',
   email: 'admin@sistema.com',
   active: true

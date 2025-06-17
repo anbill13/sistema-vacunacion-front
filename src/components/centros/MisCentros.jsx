@@ -20,7 +20,9 @@ import { usuariosService } from '../../services/usuariosService.jsx';
 import { useAuth } from '../../context/AuthContext';
 
 const MisCentros = () => {
-  const { centrosVacunacion, vacunas, lotesVacunas, setLotesVacunas } = useData();
+  const { centrosVacunacion, vacunas, setVacunas, lotesVacunas, setLotesVacunas } = useData();
+
+
   const { currentUser } = useAuth();
   const [centrosDirector, setCentrosDirector] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -82,7 +84,8 @@ const MisCentros = () => {
         id_vacuna: editingVacuna.id_vacuna,
         fecha_actualizacion: new Date().toISOString()
       };
-      await jsonService.saveData('Vacunas', vacunaEditada, 'PUT');
+      await jsonService.saveData('Vacunas', 'PUT', vacunaEditada);
+      setVacunas(vacunas.map(v => v.id_vacuna === editingVacuna.id_vacuna ? vacunaEditada : v));
       
     } else {
       // Crear nueva vacuna (POST)
@@ -92,7 +95,8 @@ const MisCentros = () => {
         fecha_creacion: new Date().toISOString(),
         fecha_actualizacion: new Date().toISOString()
       };
-      await jsonService.saveData('Vacunas', newVacuna, 'POST');
+      await jsonService.saveData('Vacunas', 'POST', newVacuna);
+      setVacunas([...vacunas, newVacuna]);
     }
     setShowVacunaModal(false);
   };
@@ -111,6 +115,7 @@ const MisCentros = () => {
   const handleDeleteLote = (lote) => {
     if(window.confirm(`¿Eliminar el lote ${lote.numero_lote}?`)) {
   jsonService.saveData('Lotes_Vacunas', 'DELETE', { id: lote.id_lote });
+  setLotesVacunas(prev => prev.filter(l => l.id_lote !== lote.id_lote));
 }
   };
   const handleLoteFormChange = e => {
@@ -127,7 +132,8 @@ const MisCentros = () => {
         cantidad_disponible: typeof loteForm.cantidad_disponible === 'number' ? loteForm.cantidad_disponible : loteForm.cantidad_dosis,
         fecha_actualizacion: new Date().toISOString()
       };
-      await jsonService.saveData('Lotes_Vacunas', loteEditado, 'PUT');
+      await jsonService.saveData('Lotes_Vacunas', 'PUT', loteEditado);
+      setLotesVacunas(lotesVacunas.map(l => l.id_lote === editingLote.id_lote ? loteEditado : l));
     } else {
       // Crear nuevo lote (POST)
       const newLote = {
@@ -137,21 +143,8 @@ const MisCentros = () => {
         fecha_creacion: new Date().toISOString(),
         fecha_actualizacion: new Date().toISOString()
       };
-      await jsonService.saveData('Lotes_Vacunas', newLote, 'POST');
-      // Recarga la lista global de lotes tras guardar
-      const lotesActualizados = [
-        ...jsonService.getData('Lotes_Vacunas', 'GET'),
-        ...jsonService.getData('Lotes_Vacunas', 'POST'),
-        ...jsonService.getData('Lotes_Vacunas', 'PUT')
-      ];
-      setLotesVacunas(
-        lotesActualizados.reduce((acc, l) => {
-          const id_lote = l?.id_lote || l?.id || `${l?.id_vacuna}_${l?.numero_lote}`;
-          if (!id_lote) return acc;
-          if (!acc.some(x => (x.id_lote || x.id) === id_lote)) acc.push({ ...l, id_lote });
-          return acc;
-        }, [])
-      );
+      await jsonService.saveData('Lotes_Vacunas', 'POST', newLote);
+      setLotesVacunas([...lotesVacunas, newLote]);
     }
     setShowLoteModal(false);
   };

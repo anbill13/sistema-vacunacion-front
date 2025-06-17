@@ -1,3 +1,4 @@
+import { addToSyncQueue } from '../utils/syncQueue';
 // --- Persistencia temporal en localStorage para pruebas ---
 // Si existe una copia en localStorage, úsala; si no, usa el archivo original
 let jsonData = (() => {
@@ -46,7 +47,10 @@ export const jsonService = {
       if (!jsonData[endpoint][method]) {
         jsonData[endpoint][method] = [];
       }
-      
+      // Aquí podrías intentar sincronizar con el backend real
+      // Si falla, agrega a la cola (por ahora, siempre agrega para simular offline)
+      addToSyncQueue({ endpoint, method, data });
+      // Persistencia local como respaldo
       // Para POST, agregamos al array existente
       if (method === 'POST') {
         // Guardar en POST

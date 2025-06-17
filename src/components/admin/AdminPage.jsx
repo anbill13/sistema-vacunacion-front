@@ -326,7 +326,7 @@ const AdminPage = () => {
         id_vacuna: editingVacuna.id_vacuna,
         fecha_actualizacion: new Date().toISOString()
       };
-      await jsonService.saveData('Vacunas', vacunaEditada, 'PUT');
+      await jsonService.saveData('Vacunas', 'PUT', vacunaEditada);
       setVacunas(vacunas.map(v => v.id_vacuna === editingVacuna.id_vacuna ? vacunaEditada : v));
     } else {
       // Crear nueva vacuna (POST)
@@ -336,7 +336,7 @@ const AdminPage = () => {
         fecha_creacion: new Date().toISOString(),
         fecha_actualizacion: new Date().toISOString()
       };
-      await jsonService.saveData('Vacunas', newVacuna, 'POST');
+      await jsonService.saveData('Vacunas', 'POST', newVacuna);
       setVacunas([...vacunas, newVacuna]);
     }
     setShowAddVacunaModal(false);
@@ -388,7 +388,7 @@ const AdminPage = () => {
         id_lote: editingLote.id_lote,
         fecha_actualizacion: new Date().toISOString()
       };
-      await jsonService.saveData('Lotes_Vacunas', loteEditado, 'PUT');
+      await jsonService.saveData('Lotes_Vacunas', 'PUT', loteEditado);
       setLotesVacunas(lotesVacunas.map(l => l.id_lote === editingLote.id_lote ? loteEditado : l));
     } else {
       // Crear nuevo lote (POST)
@@ -398,7 +398,7 @@ const AdminPage = () => {
         fecha_creacion: new Date().toISOString(),
         fecha_actualizacion: new Date().toISOString()
       };
-      await jsonService.saveData('Lotes_Vacunas', newLote, 'POST');
+      await jsonService.saveData('Lotes_Vacunas', 'POST', newLote);
       setLotesVacunas([...lotesVacunas, newLote]);
     }
     setShowAddLoteModal(false);
@@ -1658,7 +1658,7 @@ const AdminPage = () => {
                   >
                     <option value="director">Director</option>
                     <option value="doctor">Doctor</option>
-                    <option value="admin">Administrador</option>
+                    <option value="administrador">Administrador</option>
                   </select>
                 </div>
                 <div className="form-group checkbox-group">

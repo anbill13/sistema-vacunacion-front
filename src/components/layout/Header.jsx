@@ -1,13 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import UserInfo from '../auth/UserInfo';
-import { Navbar, NavbarBrand, NavbarContent, Switch } from "@nextui-org/react";
+import { Navbar, NavbarBrand, NavbarContent, Switch, Tooltip } from "@nextui-org/react";
 import { SunIcon, MoonIcon } from './Icons';
 
 const Header = ({ onShowLogin }) => {
   const { darkMode, toggleDarkMode } = useTheme();
   const { currentUser, handleLogout } = useAuth();
+  
+  // Estado para controlar si estamos online o no
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  
+  // Efecto para detectar cambios en la conexión
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   return (
     <Navbar 
@@ -27,6 +44,19 @@ const Header = ({ onShowLogin }) => {
       </NavbarBrand>
 
       <NavbarContent justify="end">
+        <Tooltip content={isOnline ? "Conectado a internet" : "Sin conexión"}>
+  <div className="flex items-center gap-2 mr-4 select-none">
+    <span
+      className={`inline-block w-2.5 h-2.5 rounded-full border border-gray-300 ${isOnline ? "bg-green-500" : "bg-gray-400"}`}
+      aria-label={isOnline ? "Online" : "Offline"}
+    />
+    <span className={`text-xs font-medium ${isOnline ? "text-green-700" : "text-gray-500"}`}
+      style={{ letterSpacing: "0.5px", textTransform: "lowercase" }}
+    >
+      {isOnline ? "online" : "offline"}
+    </span>
+  </div>
+</Tooltip>
         <UserInfo 
           user={currentUser}
           onLogout={handleLogout}

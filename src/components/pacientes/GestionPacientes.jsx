@@ -225,8 +225,6 @@ export default function GestionPacientes() {
     };
     // 2. Guardar en localStorage (GET y POST)
     const { jsonService } = require('../../services/jsonService');
-    const dosisPrevias = jsonService.getData('Dosis_Aplicadas', 'GET') || [];
-    jsonService.saveData('Dosis_Aplicadas', 'GET', [...dosisPrevias, nuevaDosis]);
     jsonService.saveData('Dosis_Aplicadas', 'POST', nuevaDosis);
     // 3. Actualizar stock del lote
     const lotes = jsonService.getData('Lotes_Vacunas', 'GET') || [];
