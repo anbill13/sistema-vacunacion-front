@@ -29,17 +29,14 @@ apiClient.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response;
       if (status === 401 && !isRedirecting) {
-        // Solo redirigir si la sesión expira (token inválido), no por credenciales incorrectas
         if (data.message && data.message.includes('Sesión expirada')) {
           isRedirecting = true;
           localStorage.removeItem('authToken');
           localStorage.removeItem('currentUser');
-          // No mostramos alert ni redirigimos aquí para credenciales incorrectas
           setTimeout(() => { isRedirecting = false; }, 1000);
           return Promise.reject(new Error('Sesión expirada'));
         }
       }
-      // Para credenciales incorrectas (400) o errores lógicos, dejamos que la UI maneje
       if (status === 200 && data?.code === 403) {
         return Promise.reject(new Error(`Acceso prohibido: ${data.message || 'Sin detalles'}`));
       }

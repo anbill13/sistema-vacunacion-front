@@ -63,7 +63,6 @@ function AppContent({ activeTab, setActiveTab }) {
     if (currentPage === 'public' && window.location.pathname !== '/') navigate('/');
     if (currentPage === 'auth' && window.location.pathname !== '/auth') navigate('/auth');
     if (currentUser && window.location.pathname === '/auth') {
-      // Set activeTab based on role
       const newTab = currentUser.role === 'administrador' ? 'admin' :
                      currentUser.role === 'director' ? 'mis-centros' :
                      currentUser.role === 'doctor' ? 'pacientes' :

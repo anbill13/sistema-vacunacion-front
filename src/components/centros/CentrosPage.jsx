@@ -19,24 +19,19 @@ const CentrosPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadCentros = () => {
+    const loadCentros = async () => {
       setLoading(true);
       try {
-        // Usar el servicio de centros para obtener todos los centros (incluidos los nuevos y actualizados)
-        let centros = centrosService.getCentros();
+        let centros = await centrosService.getCentros();
         console.log('Centros cargados en CentrosPage:', centros);
 
-        // Si el usuario es un director, filtrar solo sus centros asignados
         if (currentUser?.role === 'director') {
-          const centrosAsignados = usuariosService.getCentrosAsignadosADirector(currentUser.id);
+          const centrosAsignados = await usuariosService.getCentrosAsignadosADirector(currentUser.id);
           centros = centros.filter(centro => centrosAsignados.includes(centro.id_centro));
-        }
-        // Si el usuario es un doctor, mostrar solo su centro asignado
-        else if (currentUser?.role === 'doctor') {
-          const centroAsignado = usuariosService.getCentroAsignadoADoctor(currentUser.id);
+        } else if (currentUser?.role === 'doctor') {
+          const centroAsignado = await usuariosService.getCentroAsignadoADoctor(currentUser.id);
           centros = centros.filter(centro => centro.id_centro === centroAsignado);
         }
-
         setCentrosVacunacion(centros);
       } catch (error) {
         console.error('Error loading centros:', error);
@@ -50,6 +45,11 @@ const CentrosPage = () => {
   }, [currentUser]);
 
   useEffect(() => {
+    const loadFilteredCentros = async () => {
+      setFilteredCentros(await centrosService.filterCentros(centrosVacunacion, filterTerm, filterType));
+    };
+
+    loadFilteredCentros();
     setFilteredCentros(centrosService.filterCentros(centrosVacunacion, filterTerm, filterType));
   }, [filterTerm, filterType, centrosVacunacion]);
 
@@ -92,7 +92,7 @@ const CentrosPage = () => {
             </div>
           ) : (
             <CentrosMap
-              filteredCentros={filteredCentros}
+              filteredCentros={Array.isArray(filteredCentros) ? filteredCentros : []}
               handleCentroClick={handleCentroClick}
               handleVerPacientes={handleVerPacientes}
               currentUser={currentUser}
@@ -113,7 +113,7 @@ const CentrosPage = () => {
             </div>
           ) : (
             <CentrosList
-              filteredCentros={filteredCentros}
+              filteredCentros={Array.isArray(filteredCentros) ? filteredCentros : []}
               handleCentroClick={handleCentroClick}
               handleVerPacientes={handleVerPacientes}
               currentUser={currentUser}
