@@ -74,7 +74,7 @@ export const DataProvider = ({ children }) => {
           ...nino,
           activo: nino?.activo !== undefined ? nino.activo : true,
         }) || []));
-        const padresUsuarios = usuarios?.filter(u => u?.role === 'padre') || [];
+        const padresUsuarios = usuarios?.filter(u => u?.role === 'responsable') || [];
         setTutores([
           ...(tutoresData || []),
           ...padresUsuarios

@@ -7,8 +7,8 @@ function MisHijos() {
   const { ninos } = useData();
   const { currentUser } = useAuth();
 
-  // Filtrar hijos del padre logueado
-  const hijos = currentUser && currentUser.role === "padre"
+  // Filtrar hijos del responsable logueado
+  const hijos = currentUser && currentUser.role === "responsable"
     ? ninos.filter(n => n.id_tutor === (currentUser.id_tutor || currentUser.id))
     : [];
 

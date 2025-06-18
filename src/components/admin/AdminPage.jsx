@@ -1046,7 +1046,7 @@ const AdminPage = () => {
                         <td>{usuario.username}</td>
                         <td>
                           <span className={`badge ${usuario.role === 'director' ? 'badge-info' :
-                              usuario.role === 'padre' ? 'badge-warning' :
+                              usuario.role === 'responsable' ? 'badge-warning' :
                                 'badge-secondary'
                             }`}>
                             {usuario.role.charAt(0).toUpperCase() + usuario.role.slice(1)}
@@ -1649,7 +1649,7 @@ const AdminPage = () => {
                       required
                     >
                       <option value="director">Director</option>
-                      <option value="padre">Padre</option>
+                      <option value="responsable">Responsable</option>
                       <option value="doctor">Doctor</option>
                       {currentUser.role === 'administrador' && (
                         <option value="administrador">Administrador</option>

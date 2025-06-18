@@ -66,7 +66,7 @@ function AppContent({ activeTab, setActiveTab }) {
       const newTab = currentUser.role === 'administrador' ? 'admin' :
                      currentUser.role === 'director' ? 'mis-centros' :
                      currentUser.role === 'doctor' ? 'pacientes' :
-                     currentUser.role === 'padre' ? 'mis-hijos' : 'centros';
+                     currentUser.role === 'responsable' ? 'mis-hijos' : 'centros';
       setActiveTab(newTab);
       navigate('/dashboard');
     }

@@ -26,7 +26,7 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
     confirmPassword: '',
     name: '',
     email: '',
-    role: 'padre',
+    role: 'responsable',
     cedula: '',
     telefono: '',
   });
@@ -152,7 +152,7 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
         confirmPassword: '',
         name: '',
         email: '',
-        role: 'padre',
+        role: 'responsable',
         cedula: '',
         telefono: '',
       });
@@ -161,9 +161,9 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
   };
 
   const roleDescriptions = {
-    padre: {
+    responsable: {
       icon: '👨‍👩‍👧‍👦',
-      title: 'Padre/Tutor',
+      title: 'Responsable/Tutor',
       description: 'Accede al historial de vacunación de tus hijos y programa citas en centros de vacunación.'
     },
     doctor: {
@@ -387,8 +387,8 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                       variant="bordered"
                       fullWidth
                     >
-                      <SelectItem key="padre" value="padre" startContent={<span>👨‍👩‍👧‍👦</span>}>
-                        Padre/Tutor
+                      <SelectItem key="responsable" value="responsable" startContent={<span>👨‍👩‍👧‍👦</span>}>
+                        Responsable/Tutor
                       </SelectItem>
                       <SelectItem key="doctor" value="doctor" startContent={<span>🩺</span>}>
                         Doctor
