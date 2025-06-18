@@ -30,7 +30,7 @@ const Navigation = ({ activeTab, setActiveTab }) => {
       id: "mis-hijos",
       label: "Mis Hijos",
       icon: "👶",
-      roles: ["padre"]
+      roles: ["responsable"]
     },
     {
       id: "admin",

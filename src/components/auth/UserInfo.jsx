@@ -22,7 +22,7 @@ const UserInfo = ({ user, onLogout, onShowLogin }) => {
         return '👑';
       case 'doctor':
         return '🩺';
-      case 'padre':
+      case 'responsable':
         return '👨‍👩‍👧‍👦';
       default:
         return '👤';
@@ -35,7 +35,7 @@ const UserInfo = ({ user, onLogout, onShowLogin }) => {
         return 'danger';
       case 'doctor':
         return 'primary';
-      case 'padre':
+      case 'responsable':
         return 'success';
       default:
         return 'default';
@@ -48,8 +48,8 @@ const UserInfo = ({ user, onLogout, onShowLogin }) => {
         return 'Administrador';
       case 'doctor':
         return 'Doctor';
-      case 'padre':
-        return 'Padre/Tutor';
+      case 'responsable':
+        return 'Responsable/Tutor';
       default:
         return role;
     }
