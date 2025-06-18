@@ -1,4 +1,3 @@
-// src/services/apiService.jsx
 import axios from 'axios';
 import apiConfig from '../config/apiConfig.jsx';
 

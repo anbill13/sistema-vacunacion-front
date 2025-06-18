@@ -1,4 +1,3 @@
-// src/services/jsonService.jsx
 import apiService from './apiService';
 
 const endpointMapping = {
