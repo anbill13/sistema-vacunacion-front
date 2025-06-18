@@ -46,24 +46,31 @@ const CentrosPage = () => {
 
   useEffect(() => {
     const loadFilteredCentros = async () => {
-      setFilteredCentros(await centrosService.filterCentros(centrosVacunacion, filterTerm, filterType));
+      try {
+        const filtered = await centrosService.filterCentros(centrosVacunacion, filterTerm, filterType);
+        console.log('Centros filtrados:', filtered);
+        setFilteredCentros(filtered);
+      } catch (error) {
+        console.error('Error filtering centros:', error);
+        setFilteredCentros([]);
+      }
     };
 
     loadFilteredCentros();
-    setFilteredCentros(centrosService.filterCentros(centrosVacunacion, filterTerm, filterType));
   }, [filterTerm, filterType, centrosVacunacion]);
 
   const handleCentroClick = (centro) => {
-    // Esta función se implementaría para centrar el mapa en el centro seleccionado
-    console.log("Centro seleccionado:", centro);
+    console.log("Centro seleccionado para mapa:", centro.id_centro);
   };
 
   const handleVerPacientes = (e, centro) => {
-    // Evitar la propagación del evento si existe el método stopPropagation
     if (e && typeof e.stopPropagation === 'function') {
       e.stopPropagation();
     }
-    setSelectedCentro(centro);
+    console.log('Abriendo PacientesModal para centro:', centro.id_centro); // Verificar valor completo
+    // Crear una copia inmutable para evitar mutaciones
+    const centroCopy = { ...centro, id_centro: centro.id_centro.trim() }; // Eliminar espacios o caracteres extra
+    setSelectedCentro(centroCopy);
     setShowPacientesModal(true);
   };
 
@@ -122,11 +129,14 @@ const CentrosPage = () => {
         </CardBody>
       </Card>
 
-      {/* Modal de Pacientes */}
       {showPacientesModal && selectedCentro && (
         <PacientesModal
           isOpen={showPacientesModal}
-          onClose={() => setShowPacientesModal(false)}
+          onClose={() => {
+            console.log('Cerrando PacientesModal');
+            setShowPacientesModal(false);
+            setSelectedCentro(null);
+          }}
           centro={selectedCentro}
         />
       )}

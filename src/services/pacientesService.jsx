@@ -1,109 +1,68 @@
-import { jsonService } from './jsonService.jsx';
+import { jsonService } from './jsonService';
 
-export const getAllPacientes = () => {
-  // En el JSON, los niños son los pacientes
-  return jsonService.getData('Niños', 'GET') || [];
-};
-
-export const getPacientesCentro = (idCentro) => {
-  const pacientes = getAllPacientes();
-  return pacientes
-    .filter((paciente) => paciente.id_centro_salud === idCentro)
-    .map((paciente) => ({
-      ...paciente,
-      // Aseguramos que tenga un campo activo por defecto
-      activo: paciente.activo !== undefined ? paciente.activo : true,
-    }));
-};
-
-export const getPacientesDelCentro = (centroId) => {
-  const pacientes = getAllPacientes();
-  // En el JSON, el campo se llama id_centro_salud
-  return pacientes.filter(paciente => paciente.id_centro_salud === centroId);
-};
-
-export const getHistorialVacunas = (pacienteId) => {
-  // En el JSON, las dosis aplicadas contienen el historial de vacunación
-  const historial = jsonService.getData('Dosis_Aplicadas', 'GET') || [];
-  return historial.filter(registro => registro.id_niño === pacienteId);
-};
-
-export const getVacunasFaltantes = (pacienteId) => {
-  const todasLasVacunas = jsonService.getData('Vacunas', 'GET') || [];
-  const historialPaciente = getHistorialVacunas(pacienteId);
-  
-  return todasLasVacunas.filter(vacuna => 
-    !historialPaciente.some(registro => registro.id_vacuna === vacuna.id_vacuna)
-  );
-};
-
-export const getTutorNombre = (tutorId) => {
-  const tutores = jsonService.getData('Tutores', 'GET') || [];
-  const tutor = tutores.find(t => t.id_tutor === tutorId);
-  return tutor ? tutor.nombre_completo : 'No especificado';
-};
-
-export const togglePacienteStatus = (pacienteId) => {
-  const pacientes = getAllPacientes();
-  const pacienteIndex = pacientes.findIndex(p => p.id_niño === pacienteId);
-  
-  if (pacienteIndex !== -1) {
-    const paciente = pacientes[pacienteIndex];
-    paciente.activo = !paciente.activo;
-    // Guardamos en Niños, no en Pacientes
-    jsonService.saveData('Niños', 'PUT', paciente);
-    return true;
+export const getPacientesCentro = async (idCentro) => {
+  try {
+    console.log(`Solicitando pacientes para centro ${idCentro}`);
+    const ninos = await jsonService.getData('Niños', 'GET');
+    console.log('Niños obtenidos:', ninos.map(n => ({ id_niño: n.id_niño, id_centro_salud: n.id_centro_salud })));
+    // Convertir idCentro a cadena para comparar con UUIDs si es necesario
+    const centroIdStr = idCentro.toString();
+    const pacientes = ninos.filter(nino => {
+      const centroSaludStr = nino.id_centro_salud ? nino.id_centro_salud.toString() : '';
+      console.log(`Comparando: centroId=${centroIdStr}, id_centro_salud=${centroSaludStr}`);
+      return centroSaludStr === centroIdStr;
+    });
+    console.log(`Pacientes filtrados para centro ${idCentro}:`, pacientes);
+    return pacientes;
+  } catch (error) {
+    console.error(`Error obteniendo pacientes para centro ${idCentro}:`, error);
+    return [];
   }
-  return false;
 };
 
-// --- NUEVO: Manejo de citas de vacunación ---
-
-export const getCitasVacunas = (pacienteId) => {
-  const pacientes = getAllPacientes();
-  const paciente = pacientes.find(p => p.id_niño === pacienteId);
-  return paciente && Array.isArray(paciente.citasVacunas) ? paciente.citasVacunas : [];
-};
-
-export const agregarCitaVacuna = (pacienteId, cita) => {
-  const pacientes = getAllPacientes();
-  const pacienteIndex = pacientes.findIndex(p => p.id_niño === pacienteId);
-  if (pacienteIndex !== -1) {
-    const paciente = pacientes[pacienteIndex];
-    if (!Array.isArray(paciente.citasVacunas)) paciente.citasVacunas = [];
-    const nuevaCita = { ...cita, id: Date.now().toString() };
-    paciente.citasVacunas.push(nuevaCita);
-    jsonService.saveData('Niños', 'PUT', paciente);
-    return nuevaCita;
+export const getCitasVacunas = async (idNino) => {
+  try {
+    console.log(`Solicitando citas para niño ${idNino}`);
+    const citas = await jsonService.getData('Citas', 'GET') || [];
+    const citasFiltradas = citas.filter(cita => cita.id_niño === idNino);
+    console.log(`Citas obtenidas:`, citasFiltradas);
+    return citasFiltradas;
+  } catch (error) {
+    console.error(`Error obteniendo citas para niño ${idNino}:`, error);
+    return [];
   }
-  return null;
 };
 
-export const editarCitaVacuna = (pacienteId, citaId, datosActualizados) => {
-  const pacientes = getAllPacientes();
-  const pacienteIndex = pacientes.findIndex(p => p.id_niño === pacienteId);
-  if (pacienteIndex !== -1) {
-    const paciente = pacientes[pacienteIndex];
-    if (!Array.isArray(paciente.citasVacunas)) paciente.citasVacunas = [];
-    const citaIndex = paciente.citasVacunas.findIndex(c => c.id === citaId);
-    if (citaIndex !== -1) {
-      paciente.citasVacunas[citaIndex] = { ...paciente.citasVacunas[citaIndex], ...datosActualizados };
-      jsonService.saveData('Niños', 'PUT', paciente);
-      return paciente.citasVacunas[citaIndex];
-    }
+export const agregarCitaVacuna = async (idNino, cita) => {
+  try {
+    console.log(`Agregando cita para niño ${idNino}:`, cita);
+    const nuevaCita = { ...cita, id_niño: idNino };
+    await jsonService.saveData('Citas', 'POST', nuevaCita);
+    console.log('Cita agregada exitosamente');
+  } catch (error) {
+    console.error('Error agregando cita:', error);
+    throw error;
   }
-  return null;
 };
 
-export const eliminarCitaVacuna = (pacienteId, citaId) => {
-  const pacientes = getAllPacientes();
-  const pacienteIndex = pacientes.findIndex(p => p.id_niño === pacienteId);
-  if (pacienteIndex !== -1) {
-    const paciente = pacientes[pacienteIndex];
-    if (!Array.isArray(paciente.citasVacunas)) paciente.citasVacunas = [];
-    paciente.citasVacunas = paciente.citasVacunas.filter(c => c.id !== citaId);
-    jsonService.saveData('Niños', 'PUT', paciente);
-    return true;
+export const editarCitaVacuna = async (idNino, citaId, datos) => {
+  try {
+    console.log(`Editando cita ${citaId} para niño ${idNino}:`, datos);
+    await jsonService.saveData('Citas', 'PUT', { ...datos, id_cita: citaId });
+    console.log('Cita editada exitosamente');
+  } catch (error) {
+    console.error('Error editando cita:', error);
+    throw error;
   }
-  return false;
+};
+
+export const eliminarCitaVacuna = async (idNino, citaId) => {
+  try {
+    console.log(`Eliminando cita ${citaId} para niño ${idNino}`);
+    await jsonService.saveData('Citas', 'DELETE', citaId);
+    console.log('Cita eliminada exitosamente');
+  } catch (error) {
+    console.error('Error eliminando cita:', error);
+    throw error;
+  }
 };
