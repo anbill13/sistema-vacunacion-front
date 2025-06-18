@@ -69,10 +69,17 @@ const AdminPage = () => {
     vacunas,
     setVacunas,
     lotesVacunas,
-    setLotesVacunas
+    setLotesVacunas,
+    // Forzar recarga de datos global
+    reloadData: globalReloadData
   } = useData();
 
   const { currentUser } = useAuth();
+
+  // DEPURACIÓN: logs para entender el estado real
+  console.log('[DEBUG] currentUser:', currentUser);
+  console.log('[DEBUG] directores:', directores);
+  console.log('[DEBUG] centrosVacunacion:', centrosVacunacion);
 
   // Filtrar centros basado en el rol del usuario
   const centrosFiltrados = React.useMemo(() => {
@@ -81,23 +88,39 @@ const AdminPage = () => {
     // Para administrador, mostrar todos los centros
     if (currentUser.role === 'administrador') {
       console.log('Admin user, showing all centers:', centrosVacunacion);
-      return centrosVacunacion;
+      return Array.isArray(centrosVacunacion) ? centrosVacunacion : [];
     }
 
     // Para directores, mostrar solo sus centros asignados
     if (currentUser.role === 'director') {
-      const centrosAsignados = usuariosService.getCentrosAsignadosADirector(currentUser.id) || [];
-      console.log('Director user, assigned centers:', centrosAsignados);
+      // Buscar al director en el contexto
+      const director = (Array.isArray(directores) ? directores : []).find(d => String(d.id_usuario) === String(currentUser.id));
+      let centrosAsignados = director?.centrosAsignados || [];
 
-      return centrosVacunacion.filter(centro =>
+      // Fallback: si el usuario tiene centrosAsignados directamente
+      if ((!centrosAsignados || centrosAsignados.length === 0) && Array.isArray(currentUser.centrosAsignados)) {
+        centrosAsignados = currentUser.centrosAsignados;
+      }
+
+      // Fallback: si el usuario tiene id_centro único
+      if ((!centrosAsignados || centrosAsignados.length === 0) && currentUser.id_centro) {
+        centrosAsignados = [currentUser.id_centro];
+      }
+
+      console.log('[DEBUG] Director user, centrosAsignados usados:', centrosAsignados);
+
+      // Filtrar por id_centro (como string y número), o por nombre de director
+      const filtrados = (Array.isArray(centrosVacunacion) ? centrosVacunacion : []).filter(centro =>
         centro.director === currentUser.name ||
-        centro.id_centro === currentUser.centroId ||
-        centrosAsignados.some(c => c.id_centro === centro.id_centro)
+        String(centro.id_centro) === String(currentUser.centroId) ||
+        centrosAsignados.map(String).includes(String(centro.id_centro))
       );
+      console.log('[DEBUG] Centros filtrados para director:', filtrados);
+      return filtrados;
     }
 
     return [];
-  }, [currentUser, centrosVacunacion]);
+  }, [currentUser, centrosVacunacion, directores]);
 
   const [activeSection, setActiveSection] = useState('centros');
   const [showAddCentroModal, setShowAddCentroModal] = useState(false);
@@ -198,8 +221,9 @@ const AdminPage = () => {
       try {
         await centrosService.deleteCentro(centro.id_centro);
 
-        const updatedCentros = centrosService.getCentros();
-        setCentrosVacunacion(updatedCentros);
+        if (typeof globalReloadData === 'function') {
+          await globalReloadData();
+        }
 
         if (centro.director) {
           const directorUser = directores.find(d => d.name === centro.director);
@@ -233,8 +257,9 @@ const AdminPage = () => {
 
       await centrosService.saveCentro(newCentro);
 
-      const updatedCentros = centrosService.getCentros();
-      setCentrosVacunacion(updatedCentros);
+      if (typeof globalReloadData === 'function') {
+        await globalReloadData();
+      }
 
       if (newCentro.director) {
         const directorUser = directores.find(d => d.name === newCentro.director);
