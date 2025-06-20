@@ -112,7 +112,7 @@ export default function SearchPatients() {
   };
 
   const getCentroNombre = (idCentro) => {
-    const centro = centrosVacunacion.find(c => c.id_centro === idCentro);
+    const centro = Array.isArray(centrosVacunacion) ? centrosVacunacion.find(c => c.id_centro === idCentro) : null;
     return centro ? centro.nombre_centro : "No especificado";
   };
 

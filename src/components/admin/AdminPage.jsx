@@ -177,6 +177,12 @@ const AdminPage = () => {
 
   const [usuarios, setUsuarios] = useState([]);
 
+  // Protecciones para arrays en formularios y acciones
+  const safeCentrosVacunacion = Array.isArray(centrosVacunacion) ? centrosVacunacion : [];
+  const safeVacunas = Array.isArray(vacunas) ? vacunas : [];
+  const safeLotesVacunas = Array.isArray(lotesVacunas) ? lotesVacunas : [];
+  const safeDirectores = Array.isArray(directores) ? directores : [];
+
   // Handlers para centros
   const handleAddCentro = () => {
     setEditingCentro(null);
@@ -264,7 +270,7 @@ const AdminPage = () => {
       if (newCentro.director) {
         const directorUser = directores.find(d => d.name === newCentro.director);
         if (directorUser) {
-          await usuariosService.asignarCentroADirector(directorUser.id, newCentro);
+          await usuariosService.asignarCentroADirector(directorUser.id_usuario || directorUser.id, newCentro);
           const usuariosActualizados = await usuariosService.getUsuarios();
           setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
         }
@@ -408,7 +414,7 @@ const AdminPage = () => {
           fecha_actualizacion: new Date().toISOString()
         };
         await jsonService.saveData('Lotes_Vacunas', loteEditado, 'PUT');
-        setLotesVacunas(lotesVacunas.map(l => l.id_lote === editingLote.id_lote ? loteEditado : l));
+        setLotesVacunas(Array.isArray(lotesVacunas) ? lotesVacunas.map(l => l.id_lote === editingLote.id_lote ? loteEditado : l) : [loteEditado]);
       } else {
         const newLote = {
           ...loteForm,
@@ -417,7 +423,7 @@ const AdminPage = () => {
           fecha_actualizacion: new Date().toISOString()
         };
         await jsonService.saveData('Lotes_Vacunas', newLote, 'POST');
-        setLotesVacunas([...lotesVacunas, newLote]);
+        setLotesVacunas(Array.isArray(lotesVacunas) ? [...lotesVacunas, newLote] : [newLote]);
       }
       alert(`Lote ${editingLote ? 'actualizado' : 'creado'} correctamente`);
       setShowAddLoteModal(false);
@@ -880,9 +886,9 @@ const AdminPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {lotesVacunas.map(lote => {
-                      const vacuna = vacunas.find(v => v.id_vacuna === lote.id_vacuna);
-                      const centro = centrosVacunacion.find(c => c.id_centro === lote.id_centro);
+                    {(Array.isArray(lotesVacunas) ? lotesVacunas : []).map(lote => {
+                      const vacuna = Array.isArray(vacunas) ? vacunas.find(v => v.id_vacuna === lote.id_vacuna) : null;
+                      const centro = Array.isArray(centrosVacunacion) ? centrosVacunacion.find(c => c.id_centro === lote.id_centro) : null;
 
                       const fechaVencimiento = lote.fecha_vencimiento ? new Date(lote.fecha_vencimiento) : null;
                       const hoy = new Date();
@@ -1440,7 +1446,7 @@ const AdminPage = () => {
                       required
                     >
                       <option value="">Seleccione una vacuna</option>
-                      {vacunas.map(vacuna => (
+                      {safeVacunas.map(vacuna => (
                         <option key={vacuna.id_vacuna} value={vacuna.id_vacuna}>
                           {vacuna.nombre_vacuna} - {vacuna.fabricante}
                         </option>
@@ -1519,7 +1525,7 @@ const AdminPage = () => {
                       className="form-control"
                     >
                       <option value="">Seleccione un centro</option>
-                      {centrosVacunacion.map(centro => (
+                      {safeCentrosVacunacion.map(centro => (
                         <option key={centro.id_centro} value={centro.id_centro}>
                           {centro.nombre_centro}
                         </option>

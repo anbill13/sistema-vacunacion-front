@@ -1,4 +1,5 @@
 import apiService from './apiService';
+import jsonDataService from './jsonDataService';
 
 const endpointMapping = {
   Centros_Vacunacion: '/api/centers',
@@ -22,6 +23,12 @@ const endpointMapping = {
 
 export const jsonService = {
   async getData(endpoint, method = 'GET', params = {}) {
+    // Si estamos en modo demo/local, usar jsonDataService
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      console.log(`[DEBUG] Usando jsonDataService para ${endpoint}`);
+      return jsonDataService.getData(endpoint, method);
+    }
+    
     try {
       const apiEndpoint = endpointMapping[endpoint] || `/api/${endpoint.toLowerCase()}`;
       let data;
@@ -63,10 +70,14 @@ export const jsonService = {
   },
 
   async saveData(endpoint, method, data) {
+    // Si estamos en modo demo/local, usar jsonDataService
+    if (typeof window !== 'undefined' && window.location && window.location.hostname === 'localhost') {
+      // Simulación local
+      return jsonDataService.saveData(endpoint, method, data);
+    }
     try {
       const apiEndpoint = endpointMapping[endpoint] || `/api/${endpoint.toLowerCase()}`;
       let response;
-
       if (method === 'POST') {
         if (endpoint === 'Usuarios' && data.login) {
           response = await apiService.post('/api/users/login', data);
@@ -83,7 +94,6 @@ export const jsonService = {
       } else {
         throw new Error(`Método ${method} no soportado`);
       }
-
       return response;
     } catch (error) {
       console.error(`Error saving data for ${endpoint}[${method}]:`, error);

@@ -3,7 +3,22 @@ import jsonData from '../json_prueba.json';
 
 class JsonDataService {
   constructor() {
-    this.data = jsonData;
+    // Leer de localStorage si existe, si no usar el JSON original y guardarlo en localStorage
+    const localData = typeof window !== 'undefined' ? localStorage.getItem('sistema_vacunacion_data') : null;
+    if (localData) {
+      this.data = JSON.parse(localData);
+    } else {
+      this.data = jsonData;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sistema_vacunacion_data', JSON.stringify(jsonData));
+      }
+    }
+  }
+
+  persist() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sistema_vacunacion_data', JSON.stringify(this.data));
+    }
   }
 
   // Método genérico para obtener datos de cualquier entidad
@@ -212,6 +227,39 @@ class JsonDataService {
         pacientes: ninosCentro
       };
     });
+  }
+
+  // Métodos simulados para escritura en memoria
+  saveData(entity, operation = 'POST', data) {
+    if (!this.data[entity]) {
+      this.data[entity] = { GET: [], POST: [], PUT: [], DELETE: [] };
+    }
+    if (operation === 'POST') {
+      this.data[entity]['GET'].push(data);
+      this.data[entity]['POST'].push(data);
+      this.persist();
+      return data;
+    } else if (operation === 'PUT') {
+      const idField = Object.keys(data).find(k => k.startsWith('id_'));
+      if (idField) {
+        const idx = this.data[entity]['GET'].findIndex(item => item[idField] === data[idField]);
+        if (idx !== -1) {
+          this.data[entity]['GET'][idx] = { ...this.data[entity]['GET'][idx], ...data };
+        }
+        this.data[entity]['PUT'].push(data);
+        this.persist();
+      }
+      return data;
+    } else if (operation === 'DELETE') {
+      const idField = Object.keys(data).find(k => k.startsWith('id_'));
+      if (idField) {
+        this.data[entity]['GET'] = this.data[entity]['GET'].filter(item => item[idField] !== data[idField]);
+        this.data[entity]['DELETE'].push(data);
+        this.persist();
+      }
+      return data;
+    }
+    return null;
   }
 }
 

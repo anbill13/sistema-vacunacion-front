@@ -6,8 +6,10 @@ const usuariosService = {
     try {
       // Simular delay de red
       await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const usuarios = jsonDataService.getUsuarios();
+      const usuarios = jsonDataService.getUsuarios().map(u => ({
+        ...u,
+        name: u.nombre // Asegura que todos los usuarios tengan 'name' para el admin
+      }));
       console.log('Usuarios obtenidos:', usuarios);
       return Array.isArray(usuarios) ? usuarios : [usuarios];
     } catch (error) {
@@ -178,6 +180,47 @@ const usuariosService = {
         directores: 0
       };
     }
+  },
+
+  async getCentrosAsignadosADirector(directorId) {
+    // Busca los centros donde el director es el usuario actual
+    const centros = await jsonDataService.getCentros();
+    return centros.filter(centro => centro.director && centro.director.toLowerCase().includes('director'))
+      .map(centro => centro.id_centro);
+  },
+
+  async getCentroAsignadoADoctor(doctorId) {
+    // Busca el centro asignado al doctor (puedes ajustar la lógica según tu modelo de datos)
+    const usuarios = await jsonDataService.getUsuarios();
+    const doctor = usuarios.find(u => u.id_usuario === doctorId && u.role === 'doctor');
+    return doctor ? doctor.id_centro : null;
+  },
+
+  async asignarCentroADirector(directorId, centro) {
+    // Busca el usuario director y el centro, y actualiza ambos
+    const usuarios = jsonDataService.getUsuarios();
+    const centros = jsonDataService.getCentros();
+    const idxUsuario = usuarios.findIndex(u => u.id_usuario === directorId);
+    const idxCentro = centros.findIndex(c => c.id_centro === centro.id_centro);
+    if (idxUsuario !== -1 && idxCentro !== -1) {
+      // Actualizar usuario director
+      const updatedDirector = {
+        ...usuarios[idxUsuario],
+        id_centro: centro.id_centro,
+        centrosAsignados: Array.isArray(usuarios[idxUsuario].centrosAsignados)
+          ? Array.from(new Set([...usuarios[idxUsuario].centrosAsignados, centro.id_centro]))
+          : [centro.id_centro],
+      };
+      jsonDataService.saveData('Usuarios', 'PUT', updatedDirector);
+      // Actualizar centro
+      const updatedCentro = {
+        ...centros[idxCentro],
+        director: updatedDirector.name || updatedDirector.nombre || '',
+      };
+      jsonDataService.saveData('Centros_Vacunacion', 'PUT', updatedCentro);
+      return { updatedDirector, updatedCentro };
+    }
+    throw new Error('Director o centro no encontrado');
   }
 };
 

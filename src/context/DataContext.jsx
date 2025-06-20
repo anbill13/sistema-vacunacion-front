@@ -22,7 +22,7 @@ export const DataProvider = ({ children }) => {
     let mounted = true;
 
     const loadData = async () => {
-      if (!mounted || !currentUser) return;
+      if (!mounted) return;
       setLoading(true);
       setError(null); // Limpiar errores previos
       try {
@@ -64,6 +64,7 @@ export const DataProvider = ({ children }) => {
         if (!mounted) return;
 
         console.log('[DEBUG] Centros recibidos:', centros);
+        // Refuerzo: solo actualizar si hay datos válidos, si no, mantener el estado anterior
         setCentrosVacunacion(Array.isArray(centros) ? centros : centros ? [centros] : []);
         // Si es director, guarda los centros asignados en el usuario para filtrado global
         if (currentUser && currentUser.role === 'director' && centrosAsignadosDirector.length > 0) {
@@ -73,7 +74,7 @@ export const DataProvider = ({ children }) => {
         setNinos(ninosData?.map(nino => ({
           ...nino,
           activo: nino?.activo !== undefined ? nino.activo : true,
-        }) || []));
+        })) || []);
         const padresUsuarios = usuarios?.filter(u => u?.role === 'padre') || [];
         setTutores([
           ...(tutoresData || []),
@@ -107,13 +108,7 @@ export const DataProvider = ({ children }) => {
       }
     };
 
-    // Si el usuario no está autenticado, no limpiar el estado por defecto, solo mostrar error
-    if (!currentUser) {
-      console.warn('[DEBUG] currentUser es null, no se cargan ni limpian datos.');
-      setError('Debes iniciar sesión para ver los datos.');
-      return;
-    }
-
+    // Siempre cargar datos, aunque no haya usuario
     loadData();
 
     // Permitir recarga manual desde componentes hijos

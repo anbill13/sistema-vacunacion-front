@@ -30,7 +30,23 @@ const authService = {
     try {
       // Simular delay de red
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+      // Guardar en memoria si estamos en modo demo/local
+      if (typeof window !== 'undefined' && window.location && window.location.hostname === 'localhost') {
+        const newUser = {
+          id_usuario: `nuevo_${Date.now()}`,
+          nombre: userData.nombre,
+          rol: userData.rol || userData.role || 'usuario',
+          role: (userData.rol || userData.role || 'usuario').toLowerCase(),
+          email: userData.email,
+          telefono: userData.telefono,
+          username: userData.username,
+          estado: 'Activo',
+          id_centro: userData.id_centro || null
+        };
+        jsonDataService.saveData('Usuarios', 'POST', newUser);
+        const token = `token_${newUser.id_usuario}_${Date.now()}`;
+        return { token, user: { ...newUser, token } };
+      }
       // En un sistema real, aquí se agregaría el usuario al JSON o base de datos
       // Por ahora solo simulamos que se registra correctamente
       const newUser = {
