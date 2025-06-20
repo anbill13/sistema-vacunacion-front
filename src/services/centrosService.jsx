@@ -1,5 +1,5 @@
 // src/services/centrosService.jsx
-import { jsonService } from './jsonService.jsx';
+import jsonDataService from './jsonDataService';
 
 export const provinciasRD = [
   "Azua", "Bahoruco", "Barahona", "Dajabón", "Distrito Nacional", "Duarte", "Elías Piña",
@@ -17,7 +17,10 @@ export const sectoresRD = [
 export const centrosService = {
   async getCentros() {
     try {
-      const centros = await jsonService.getData('Centros_Vacunacion', 'GET');
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const centros = jsonDataService.getCentrosConDatos();
       console.log('Fetched centers in centrosService:', centros);
       return centros.sort((a, b) => a.nombre_centro.localeCompare(b.nombre_centro));
     } catch (error) {
@@ -28,12 +31,29 @@ export const centrosService = {
 
   async getCentroById(id) {
     try {
-      const centro = await jsonService.getData('Centros_Vacunacion', 'GET', { id });
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const centro = jsonDataService.getCentroById(id);
       if (!centro) {
         throw new Error('Centro no encontrado');
       }
-      console.log('Fetched center by ID:', centro);
-      return centro;
+      
+      // Agregar datos adicionales
+      const ninos = jsonDataService.getNinos().filter(n => n.id_centro_salud === id);
+      const usuarios = jsonDataService.getUsuariosPorCentro(id);
+      const lotes = jsonDataService.getLotesPorCentro(id);
+      
+      const centroCompleto = {
+        ...centro,
+        totalPacientes: ninos.length,
+        pacientes: ninos,
+        usuarios: usuarios,
+        lotes: lotes
+      };
+      
+      console.log('Fetched center by ID:', centroCompleto);
+      return centroCompleto;
     } catch (error) {
       console.error(`Error al obtener centro con ID ${id}:`, error);
       throw error;
@@ -42,24 +62,27 @@ export const centrosService = {
 
   async saveCentro(centro) {
     try {
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       if (!centro.nombre_centro || !centro.direccion || !centro.latitud || !centro.longitud) {
         throw new Error('El nombre del centro, la dirección, la latitud y la longitud son obligatorios');
       }
 
       const centroData = {
         ...centro,
-        updated_at: new Date().toISOString(),
-        created_at: centro.id_centro ? centro.created_at : new Date().toISOString(),
-        id_centro: centro.id_centro || `centro-${Date.now()}-${Math.floor(Math.random() * 10000)}`
+        fecha_actualizacion: new Date().toISOString(),
+        fecha_creacion: centro.id_centro ? centro.fecha_creacion : new Date().toISOString(),
+        id_centro: centro.id_centro || `550e8400-e29b-41d4-a716-${Date.now().toString(16)}`
       };
 
-      const method = centro.id_centro ? 'PUT' : 'POST';
-      const response = await jsonService.saveData('Centros_Vacunacion', method, centroData);
+      // En una implementación real, aquí se guardaría en el JSON o base de datos
+      console.log('Guardando centro:', centroData);
 
       return {
         success: true,
         id_centro: centroData.id_centro,
-        message: method === 'POST' ? 'Center created' : 'Center updated'
+        message: centro.id_centro ? 'Centro actualizado' : 'Centro creado'
       };
     } catch (error) {
       console.error('Error al guardar centro:', error);
@@ -69,11 +92,16 @@ export const centrosService = {
 
   async deleteCentro(centroId) {
     try {
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       if (!centroId) {
         throw new Error('ID del centro es requerido');
       }
 
-      await jsonService.saveData('Centros_Vacunacion', 'DELETE', centroId);
+      // En una implementación real, aquí se eliminaría del JSON o base de datos
+      console.log('Eliminando centro:', centroId);
+      
       return { success: true, message: 'Centro eliminado' };
     } catch (error) {
       console.error('Error al eliminar centro:', error);

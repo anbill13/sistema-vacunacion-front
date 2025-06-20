@@ -12,8 +12,8 @@ export const AuthProvider = ({ children }) => {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
       const user = JSON.parse(savedUser);
-      // Normalize role
-      setCurrentUser({ ...user, role: user.rol || user.role });
+      // Normalize role to lowercase
+      setCurrentUser({ ...user, role: (user.rol || user.role)?.toLowerCase() });
       setCurrentPage('dashboard');
     } else {
       setCurrentPage('public');
@@ -22,8 +22,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const handleLogin = (user) => {
-    // Normalize role
-    const normalizedUser = { ...user, role: user.rol || user.role };
+    // Normalize role to lowercase
+    const normalizedUser = { ...user, role: (user.rol || user.role)?.toLowerCase() };
     setCurrentUser(normalizedUser);
     localStorage.setItem('currentUser', JSON.stringify(normalizedUser));
     localStorage.setItem('authToken', user.token || ''); // Store token if provided

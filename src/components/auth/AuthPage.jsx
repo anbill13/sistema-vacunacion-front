@@ -430,6 +430,59 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                 </Button>
 
                 {isLogin && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border">
+                    <h4 className="text-sm font-semibold mb-2">👤 Usuarios de Prueba:</h4>
+                    <div className="grid grid-cols-1 gap-2 text-xs">
+                      <div className="flex justify-between">
+                        <span>👨‍💼 <strong>admin</strong> (Administrador)</span>
+                        <Button 
+                          size="sm" 
+                          variant="light" 
+                          className="h-6 min-w-0 px-2"
+                          onClick={() => setFormData({...formData, username: 'admin', password: 'admin123'})}
+                        >
+                          Usar
+                        </Button>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>👨‍👩‍👧‍👦 <strong>padre</strong> (Padre/Tutor)</span>
+                        <Button 
+                          size="sm" 
+                          variant="light" 
+                          className="h-6 min-w-0 px-2"
+                          onClick={() => setFormData({...formData, username: 'padre', password: 'padre123'})}
+                        >
+                          Usar
+                        </Button>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>🏥 <strong>director</strong> (Director)</span>
+                        <Button 
+                          size="sm" 
+                          variant="light" 
+                          className="h-6 min-w-0 px-2"
+                          onClick={() => setFormData({...formData, username: 'director', password: 'director123'})}
+                        >
+                          Usar
+                        </Button>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>👩‍⚕️ <strong>doctor</strong> (Doctor)</span>
+                        <Button 
+                          size="sm" 
+                          variant="light" 
+                          className="h-6 min-w-0 px-2"
+                          onClick={() => setFormData({...formData, username: 'doctor', password: 'doctor123'})}
+                        >
+                          Usar
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Haz clic en "Usar" para llenar automáticamente los campos</p>
+                  </div>
+                )}
+
+                {isLogin && (
                   <div className="text-center mt-4">
                     <p className="text-sm text-default-500">
                       ¿No tienes una cuenta? 
