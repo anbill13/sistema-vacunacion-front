@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { centrosService } from '../../services/centrosService';
+import centrosService from '../../services/centrosService';
 import usuariosService from '../../services/usuariosService';
 import CentrosFilter from './CentrosFilter';
 import CentrosMap from './CentrosMap';

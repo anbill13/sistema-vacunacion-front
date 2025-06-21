@@ -1,7 +1,7 @@
 // src/components/admin/AdminPage.jsx
 import React, { useState, useEffect } from 'react';
-import { useData } from '../../context/DataContext';
-import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import {
   Button,
   Card,
@@ -15,9 +15,9 @@ import {
   ModalFooter,
   Tooltip
 } from "@nextui-org/react";
-import usuariosService from '../../services/usuariosService';
-import { centrosService } from '../../services/centrosService';
-import { jsonService } from '../../services/jsonService';
+import usuariosService from '../../services/usuariosService.jsx';
+import centrosService from '../../services/centrosService.jsx';
+import vacunasService from '../../services/vacunasService.jsx';
 
 // Estilos CSS para los botones flotantes
 const floatingButtonStyles = `
@@ -67,9 +67,7 @@ const AdminPage = () => {
     directores,
     setDirectores,
     vacunas,
-    setVacunas,
     lotesVacunas,
-    setLotesVacunas,
     // Forzar recarga de datos global
     reloadData: globalReloadData
   } = useData();
@@ -78,17 +76,29 @@ const AdminPage = () => {
 
   // DEPURACIÓN: logs para entender el estado real
   console.log('[DEBUG] currentUser:', currentUser);
+  console.log('[DEBUG] currentUser.role:', currentUser?.role);
   console.log('[DEBUG] directores:', directores);
   console.log('[DEBUG] centrosVacunacion:', centrosVacunacion);
+  console.log('[DEBUG] centrosVacunacion.length:', centrosVacunacion?.length);
 
   // Filtrar centros basado en el rol del usuario
   const centrosFiltrados = React.useMemo(() => {
-    if (!currentUser) return [];
+    console.log('[DEBUG] useMemo centrosFiltrados ejecutándose...');
+    console.log('[DEBUG] currentUser en useMemo:', currentUser);
+    console.log('[DEBUG] centrosVacunacion en useMemo:', centrosVacunacion);
+    
+    if (!currentUser) {
+      console.log('[DEBUG] No hay currentUser, retornando array vacío');
+      return [];
+    }
 
     // Para administrador, mostrar todos los centros
     if (currentUser.role === 'administrador') {
-      console.log('Admin user, showing all centers:', centrosVacunacion);
-      return Array.isArray(centrosVacunacion) ? centrosVacunacion : [];
+      console.log('[DEBUG] Admin user detectado, centrosVacunacion:', centrosVacunacion);
+      console.log('[DEBUG] Array.isArray(centrosVacunacion):', Array.isArray(centrosVacunacion));
+      const result = Array.isArray(centrosVacunacion) ? centrosVacunacion : [];
+      console.log('[DEBUG] Resultado para admin:', result);
+      return result;
     }
 
     // Para directores, mostrar solo sus centros asignados
@@ -119,8 +129,15 @@ const AdminPage = () => {
       return filtrados;
     }
 
-    return [];
+    // Fallback: si el role no es reconocido pero tenemos centrosVacunacion, mostrar todos
+    console.log('[DEBUG] Role no reconocido o no detectado, aplicando fallback');
+    console.log('[DEBUG] Mostrando todos los centros como fallback:', centrosVacunacion);
+    return Array.isArray(centrosVacunacion) ? centrosVacunacion : [];
   }, [currentUser, centrosVacunacion, directores]);
+
+  // Log adicional para verificar el resultado final
+  console.log('[DEBUG] centrosFiltrados final:', centrosFiltrados);
+  console.log('[DEBUG] centrosFiltrados.length:', centrosFiltrados?.length);
 
   const [activeSection, setActiveSection] = useState('centros');
   const [showAddCentroModal, setShowAddCentroModal] = useState(false);
@@ -180,8 +197,6 @@ const AdminPage = () => {
   // Protecciones para arrays en formularios y acciones
   const safeCentrosVacunacion = Array.isArray(centrosVacunacion) ? centrosVacunacion : [];
   const safeVacunas = Array.isArray(vacunas) ? vacunas : [];
-  const safeLotesVacunas = Array.isArray(lotesVacunas) ? lotesVacunas : [];
-  const safeDirectores = Array.isArray(directores) ? directores : [];
 
   // Handlers para centros
   const handleAddCentro = () => {
@@ -341,29 +356,38 @@ const AdminPage = () => {
   const handleVacunaSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingVacuna) {
-        const vacunaEditada = {
-          ...vacunaForm,
-          id_vacuna: editingVacuna.id_vacuna,
-          fecha_actualizacion: new Date().toISOString()
-        };
-        await jsonService.saveData('Vacunas', vacunaEditada, 'PUT');
-        setVacunas(vacunas.map(v => v.id_vacuna === editingVacuna.id_vacuna ? vacunaEditada : v));
-      } else {
-        const newVacuna = {
-          ...vacunaForm,
-          id_vacuna: crypto?.randomUUID?.() || `vacuna-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          fecha_creacion: new Date().toISOString(),
-          fecha_actualizacion: new Date().toISOString()
-        };
-        await jsonService.saveData('Vacunas', newVacuna, 'POST');
-        setVacunas([...vacunas, newVacuna]);
+      const newVacuna = {
+        ...vacunaForm,
+        id_vacuna: editingVacuna ? editingVacuna.id_vacuna : undefined
+      };
+
+      if (!newVacuna.nombre_vacuna || !newVacuna.fabricante) {
+        alert('El nombre de la vacuna y el fabricante son obligatorios');
+        return;
       }
+
+      await vacunasService.saveVacuna(newVacuna);
+
+      if (typeof globalReloadData === 'function') {
+        await globalReloadData();
+      }
+
       alert(`Vacuna ${editingVacuna ? 'actualizada' : 'creada'} correctamente`);
       setShowAddVacunaModal(false);
+      setVacunaForm({
+        nombre_vacuna: '',
+        fabricante: '',
+        tipo: '',
+        dosis_requeridas: 1,
+        intervalo_dosis: 0,
+        edad_minima: 0,
+        edad_maxima: 100,
+        descripcion: ''
+      });
+      setEditingVacuna(null);
     } catch (error) {
       console.error('Error al guardar vacuna:', error);
-      alert('Error al guardar la vacuna. Por favor intente nuevamente.');
+      alert(error.message || 'Error al guardar la vacuna. Por favor intente nuevamente.');
     }
   };
 
@@ -407,29 +431,37 @@ const AdminPage = () => {
   const handleLoteSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingLote) {
-        const loteEditado = {
-          ...loteForm,
-          id_lote: editingLote.id_lote,
-          fecha_actualizacion: new Date().toISOString()
-        };
-        await jsonService.saveData('Lotes_Vacunas', loteEditado, 'PUT');
-        setLotesVacunas(Array.isArray(lotesVacunas) ? lotesVacunas.map(l => l.id_lote === editingLote.id_lote ? loteEditado : l) : [loteEditado]);
-      } else {
-        const newLote = {
-          ...loteForm,
-          id_lote: crypto?.randomUUID?.() || `lote-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          fecha_creacion: new Date().toISOString(),
-          fecha_actualizacion: new Date().toISOString()
-        };
-        await jsonService.saveData('Lotes_Vacunas', newLote, 'POST');
-        setLotesVacunas(Array.isArray(lotesVacunas) ? [...lotesVacunas, newLote] : [newLote]);
+      const newLote = {
+        ...loteForm,
+        id_lote: editingLote ? editingLote.id_lote : undefined
+      };
+
+      if (!newLote.id_vacuna || !newLote.numero_lote) {
+        alert('La vacuna y el número de lote son obligatorios');
+        return;
       }
+
+      await vacunasService.saveLote(newLote);
+
+      if (typeof globalReloadData === 'function') {
+        await globalReloadData();
+      }
+
       alert(`Lote ${editingLote ? 'actualizado' : 'creado'} correctamente`);
       setShowAddLoteModal(false);
+      setLoteForm({
+        id_vacuna: '',
+        numero_lote: '',
+        fecha_fabricacion: '',
+        fecha_vencimiento: '',
+        cantidad_dosis: 0,
+        temperatura_almacenamiento: '',
+        id_centro: ''
+      });
+      setEditingLote(null);
     } catch (error) {
       console.error('Error al guardar lote:', error);
-      alert('Error al guardar el lote. Por favor intente nuevamente.');
+      alert(error.message || 'Error al guardar el lote. Por favor intente nuevamente.');
     }
   };
 
@@ -562,20 +594,23 @@ const AdminPage = () => {
     const confirmed = window.confirm(`¿Está seguro de eliminar la vacuna ${vacuna.nombre_vacuna}?\nEsta acción no se puede deshacer y eliminará también los lotes asociados.`);
     if (confirmed) {
       try {
-        const lotesAsociados = lotesVacunas.filter(lote => lote.id_vacuna === vacuna.id_vacuna);
-        for (const lote of lotesAsociados) {
-          await jsonService.saveData('Lotes_Vacunas', { id: lote.id_lote }, 'DELETE');
+        // Verificar si hay lotes asociados
+        const lotesAsociados = Array.isArray(lotesVacunas) ? lotesVacunas.filter(lote => lote.id_vacuna === vacuna.id_vacuna) : [];
+        if (lotesAsociados.length > 0) {
+          alert('No se puede eliminar la vacuna porque tiene lotes asociados. Elimine primero los lotes.');
+          return;
         }
 
-        await jsonService.saveData('Vacunas', { id: vacuna.id_vacuna }, 'DELETE');
+        await vacunasService.deleteVacuna(vacuna.id_vacuna);
 
-        setVacunas(prevVacunas => prevVacunas.filter(v => v.id_vacuna !== vacuna.id_vacuna));
-        setLotesVacunas(prevLotes => prevLotes.filter(l => l.id_vacuna !== vacuna.id_vacuna));
+        if (typeof globalReloadData === 'function') {
+          await globalReloadData();
+        }
 
-        alert('Vacuna y sus lotes eliminados correctamente');
+        alert('Vacuna eliminada correctamente');
       } catch (error) {
         console.error('Error al eliminar la vacuna:', error);
-        alert('Error al eliminar la vacuna');
+        alert(error.message || 'Error al eliminar la vacuna');
       }
     }
   };
@@ -584,14 +619,16 @@ const AdminPage = () => {
     const confirmed = window.confirm(`¿Está seguro de eliminar el lote ${lote.numero_lote}?\nEsta acción no se puede deshacer.`);
     if (confirmed) {
       try {
-        await jsonService.saveData('Lotes_Vacunas', { id: lote.id_lote }, 'DELETE');
+        await vacunasService.deleteLote(lote.id_lote);
 
-        setLotesVacunas(prevLotes => prevLotes.filter(l => l.id_lote !== lote.id_lote));
+        if (typeof globalReloadData === 'function') {
+          await globalReloadData();
+        }
 
         alert('Lote eliminado correctamente');
       } catch (error) {
         console.error('Error al eliminar el lote:', error);
-        alert('Error al eliminar el lote');
+        alert(error.message || 'Error al eliminar el lote');
       }
     }
   };

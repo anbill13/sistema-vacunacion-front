@@ -5,8 +5,8 @@ import {
   Tabs, Tab, Tooltip, Input
 } from "@nextui-org/react";
 import { useData } from '../../context/DataContext';
-import { centrosService } from '../../services/centrosService';
-import { jsonService } from '../../services/jsonService';
+import centrosService from '../../services/centrosService';
+import jsonService from '../../services/jsonService';
 import { useAuth } from '../../context/AuthContext';
 import usuariosService from '../../services/usuariosService';
 

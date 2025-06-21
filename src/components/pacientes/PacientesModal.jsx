@@ -25,7 +25,7 @@ import {
   Spinner
 } from "@nextui-org/react";
 import { getPacientesCentro } from '../../services/pacientesService';
-import { vacunasService } from '../../services/vacunasService';
+import vacunasService from '../../services/vacunasService';
 
 const PacientesModal = ({ isOpen, onClose, centro }) => {
   const { dosisAplicadas, vacunas, lotesVacunas, tutores } = useData();

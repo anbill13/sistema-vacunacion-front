@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import centrosService from '../services/centrosService.jsx';
-import vacunasService from '../services/vacunasService.jsx';
+import { centrosService } from '../services/centrosService.jsx';
+import { vacunasService } from '../services/vacunasService.jsx';
 import usuariosService from '../services/usuariosService.jsx';
 import { useAuth } from './AuthContext.jsx';
 

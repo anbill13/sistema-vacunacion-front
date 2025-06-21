@@ -1,5 +1,5 @@
 // src/services/centrosService.jsx
-import jsonDataService from './jsonDataService';
+import apiService from './apiService.jsx';
 
 export const provinciasRD = [
   "Azua", "Bahoruco", "Barahona", "Dajabón", "Distrito Nacional", "Duarte", "Elías Piña",
@@ -14,103 +14,129 @@ export const sectoresRD = [
   "Salud Pública", "Privado", "ONG", "Militar", "Educativo"
 ];
 
-export const centrosService = {
+const centrosService = {
+  // Obtener todos los centros de vacunación
   async getCentros() {
     try {
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const centros = jsonDataService.getCentrosConDatos();
-      console.log('Fetched centers in centrosService:', centros);
+      const response = await apiService.get('/api/centers');
+      console.log('[centrosService] Get centros response:', response);
+      const centros = Array.isArray(response) ? response : [];
       return centros.sort((a, b) => a.nombre_centro.localeCompare(b.nombre_centro));
     } catch (error) {
-      console.error('Error al obtener centros:', error);
+      console.error('[centrosService] Error getting centros:', error);
       return [];
     }
   },
 
+  // Obtener un centro por ID
   async getCentroById(id) {
     try {
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const centro = jsonDataService.getCentroById(id);
-      if (!centro) {
-        throw new Error('Centro no encontrado');
-      }
-      
-      // Agregar datos adicionales
-      const ninos = jsonDataService.getNinos().filter(n => n.id_centro_salud === id);
-      const usuarios = jsonDataService.getUsuariosPorCentro(id);
-      const lotes = jsonDataService.getLotesPorCentro(id);
-      
-      const centroCompleto = {
-        ...centro,
-        totalPacientes: ninos.length,
-        pacientes: ninos,
-        usuarios: usuarios,
-        lotes: lotes
-      };
-      
-      console.log('Fetched center by ID:', centroCompleto);
-      return centroCompleto;
+      const response = await apiService.get(`/api/centers/${id}`);
+      console.log('[centrosService] Get centro by ID response:', response);
+      return response;
     } catch (error) {
-      console.error(`Error al obtener centro con ID ${id}:`, error);
-      throw error;
+      console.error('[centrosService] Error getting centro by ID:', error);
+      throw new Error(error.message || 'Error al obtener centro');
     }
   },
 
-  async saveCentro(centro) {
+  // Crear un nuevo centro
+  async createCentro(centroData) {
     try {
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      if (!centro.nombre_centro || !centro.direccion || !centro.latitud || !centro.longitud) {
-        throw new Error('El nombre del centro, la dirección, la latitud y la longitud son obligatorios');
-      }
-
-      const centroData = {
-        ...centro,
-        fecha_actualizacion: new Date().toISOString(),
-        fecha_creacion: centro.id_centro ? centro.fecha_creacion : new Date().toISOString(),
-        id_centro: centro.id_centro || `550e8400-e29b-41d4-a716-${Date.now().toString(16)}`
-      };
-
-      // En una implementación real, aquí se guardaría en el JSON o base de datos
-      console.log('Guardando centro:', centroData);
-
-      return {
-        success: true,
-        id_centro: centroData.id_centro,
-        message: centro.id_centro ? 'Centro actualizado' : 'Centro creado'
-      };
+      const response = await apiService.post('/api/centers', {
+        nombre_centro: centroData.nombre_centro,
+        nombre_corto: centroData.nombre_corto || null,
+        direccion: centroData.direccion || null,
+        latitud: centroData.latitud ? parseFloat(centroData.latitud) : null,
+        longitud: centroData.longitud ? parseFloat(centroData.longitud) : null,
+        telefono: centroData.telefono || null,
+        director: centroData.director || null,
+        sitio_web: centroData.sitio_web || null
+      });
+      console.log('[centrosService] Create centro response:', response);
+      return response;
     } catch (error) {
-      console.error('Error al guardar centro:', error);
-      throw error;
+      console.error('[centrosService] Error creating centro:', error);
+      throw new Error(error.message || 'Error al crear centro');
     }
   },
 
-  async deleteCentro(centroId) {
+  // Actualizar un centro existente
+  async updateCentro(id, centroData) {
     try {
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      if (!centroId) {
-        throw new Error('ID del centro es requerido');
-      }
-
-      // En una implementación real, aquí se eliminaría del JSON o base de datos
-      console.log('Eliminando centro:', centroId);
-      
-      return { success: true, message: 'Centro eliminado' };
+      const response = await apiService.put(`/api/centers/${id}`, {
+        nombre_centro: centroData.nombre_centro,
+        nombre_corto: centroData.nombre_corto || null,
+        direccion: centroData.direccion || null,
+        latitud: centroData.latitud ? parseFloat(centroData.latitud) : null,
+        longitud: centroData.longitud ? parseFloat(centroData.longitud) : null,
+        telefono: centroData.telefono || null,
+        director: centroData.director || null,
+        sitio_web: centroData.sitio_web || null
+      });
+      console.log('[centrosService] Update centro response:', response);
+      return response;
     } catch (error) {
-      console.error('Error al eliminar centro:', error);
-      throw error;
+      console.error('[centrosService] Error updating centro:', error);
+      throw new Error(error.message || 'Error al actualizar centro');
     }
   },
 
+  // Eliminar un centro
+  async deleteCentro(id) {
+    try {
+      const response = await apiService.delete(`/api/centers/${id}`);
+      console.log('[centrosService] Delete centro response:', response);
+      return response;
+    } catch (error) {
+      console.error('[centrosService] Error deleting centro:', error);
+      throw new Error(error.message || 'Error al eliminar centro');
+    }
+  },
+
+  // Guardar centro (crear o actualizar)
+  async saveCentro(centroData) {
+    try {
+      if (centroData.id_centro) {
+        // Actualizar centro existente
+        return await this.updateCentro(centroData.id_centro, centroData);
+      } else {
+        // Crear nuevo centro
+        return await this.createCentro(centroData);
+      }
+    } catch (error) {
+      console.error('[centrosService] Error saving centro:', error);
+      throw new Error(error.message || 'Error al guardar centro');
+    }
+  },
+
+  // Obtener centros por director
+  async getCentrosByDirector(directorName) {
+    try {
+      const allCentros = await this.getCentros();
+      return allCentros.filter(centro => centro.director === directorName);
+    } catch (error) {
+      console.error('[centrosService] Error getting centros by director:', error);
+      return [];
+    }
+  },
+
+  // Asignar director a centro
+  async assignDirectorToCentro(centroId, directorName) {
+    try {
+      const response = await apiService.put(`/api/centers/${centroId}`, {
+        director: directorName
+      });
+      console.log('[centrosService] Assign director response:', response);
+      return response;
+    } catch (error) {
+      console.error('[centrosService] Error assigning director:', error);
+      throw new Error(error.message || 'Error al asignar director');
+    }
+  },
+
+  // Filtrar centros
   filterCentros(centros, filterTerm, filterType) {
-    // Ensure centros is an array
     const centrosData = Array.isArray(centros) ? centros : [];
     console.log('Filtering centers:', centrosData, 'Filter term:', filterTerm, 'Filter type:', filterType);
 
@@ -143,6 +169,7 @@ export const centrosService = {
     }
   },
 
+  // Opciones de filtro
   getFilterOptions(filterType, centros) {
     const centrosData = Array.isArray(centros) ? centros : [];
     
@@ -163,3 +190,5 @@ export const centrosService = {
     }
   }
 };
+
+export default centrosService;

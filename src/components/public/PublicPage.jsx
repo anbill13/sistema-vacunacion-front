@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { centrosService } from '../../services/centrosService';
+import centrosService from '../../services/centrosService';
 import { 
   Navbar, NavbarBrand, NavbarContent, Button, Switch, Card, CardBody, CardHeader, 
   Select, SelectItem, Tabs, Tab, Divider, Chip, Spinner

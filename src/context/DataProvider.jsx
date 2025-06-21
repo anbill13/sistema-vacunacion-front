@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { jsonService } from '../services/jsonService';
+import jsonService from '../services/jsonService';
 
 export const DataContext = createContext();
 

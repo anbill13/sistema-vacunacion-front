@@ -1,7 +1,7 @@
 // src/services/vacunasService.jsx
 import apiService from './apiService.jsx';
 
-const vacunasService = {
+export const vacunasService = {
   // Obtener todas las vacunas
   async getVacunas() {
     try {
@@ -244,5 +244,3 @@ const vacunasService = {
     }
   }
 };
-
-export default vacunasService;

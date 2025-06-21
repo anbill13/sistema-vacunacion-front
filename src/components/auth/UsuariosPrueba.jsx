@@ -2,14 +2,27 @@
 import React, { useState } from 'react';
 import authService from '../../services/authService';
 
-const UsuariosPrueba = ({ onLoginSelect }) => {
+const UsuariosPrueba = ({ onLoginSelect, onDemoLogin }) => {
   const [mostrarUsuarios, setMostrarUsuarios] = useState(false);
   
   const usuariosPrueba = authService.getTestUsers();
 
-  const handleUsuarioClick = (usuario) => {
-    if (onLoginSelect) {
-      onLoginSelect(usuario.username, usuario.password);
+  const handleUsuarioClick = async (usuario) => {
+    if (onDemoLogin) {
+      // Use demo login directly
+      try {
+        const result = await authService.demoLogin(usuario);
+        if (result.success) {
+          onDemoLogin(result.user);
+        } else {
+          console.error('Demo login failed:', result.error);
+        }
+      } catch (error) {
+        console.error('Error in demo login:', error);
+      }
+    } else if (onLoginSelect) {
+      // Fallback to form filling
+      onLoginSelect(usuario.username, 'demo123');
     }
   };
 
@@ -59,8 +72,8 @@ const UsuariosPrueba = ({ onLoginSelect }) => {
             </div>
             <div className="alert alert-info mt-3">
               <small>
-                <strong>Nota:</strong> Haz click en cualquier usuario para llenar automáticamente 
-                los campos de login. Estos son usuarios de prueba con datos del archivo JSON.
+                <strong>Nota:</strong> Haz click en cualquier usuario para iniciar sesión como demo. 
+                Estos usuarios funcionan sin necesidad de conexión al servidor.
               </small>
             </div>
           </div>

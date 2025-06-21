@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { centrosService } from '../../services/centrosService';
+import centrosService from '../../services/centrosService';
 import { Select, SelectItem } from "@nextui-org/react";
 
 const CentrosFilter = ({ filterType, setFilterType, filterTerm, setFilterTerm, centrosVacunacion }) => {

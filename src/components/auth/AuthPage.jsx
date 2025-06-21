@@ -16,6 +16,7 @@ import {
 } from "@nextui-org/react";
 import { EyeIcon, EyeSlashIcon } from './Icons';
 import usuariosService from '../../services/usuariosService';
+import authService from '../../services/authService';
 
 const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -121,8 +122,21 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
         onLogin(savedUser);
       }
     } catch (err) {
-      setError(err.message || 'Error en el servidor. Intenta nuevamente.');
-      console.error('Error:', err);
+      // More user-friendly error messages
+      let errorMessage = err.message || 'Error en el servidor. Intenta nuevamente.';
+      
+      if (errorMessage.includes('Error en la solicitud al servidor')) {
+        errorMessage = 'Hay un problema temporal con el servidor de autenticación. ' +
+                     'El sistema está intentando métodos alternativos de verificación. ' +
+                     'Si el problema persiste, contacte al administrador.';
+      } else if (errorMessage.includes('Invalid credentials')) {
+        errorMessage = 'Usuario o contraseña incorrectos. Verifique sus credenciales.';
+      } else if (errorMessage.includes('User account is inactive')) {
+        errorMessage = 'Su cuenta está inactiva. Contacte al administrador.';
+      }
+      
+      setError(errorMessage);
+      console.error('Error de autenticación:', err);
     } finally {
       setLoading(false);
     }
@@ -160,6 +174,15 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
     }
   };
 
+  // Handler for demo login
+  const handleDemoLogin = (demoUser) => {
+    if (typeof onLogin === 'function') {
+      onLogin(demoUser);
+    } else {
+      console.error('onLogin is not a function');
+    }
+  };
+
   const roleDescriptions = {
     padre: {
       icon: '👨‍👩‍👧‍👦',
@@ -167,8 +190,8 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
       description: 'Accede al historial de vacunación de tus hijos y programa citas en centros de vacunación.'
     },
     doctor: {
-      icon: '🩺',
-      title: 'Doctor',
+      icon: '👩‍⚕️',
+      title: 'Enfermero',
       description: 'Gestiona pacientes, registra vacunaciones y administra citas en los centros asignados.'
     }
   };
@@ -390,8 +413,8 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                       <SelectItem key="padre" value="padre" startContent={<span>👨‍👩‍👧‍👦</span>}>
                         Padre/Tutor
                       </SelectItem>
-                      <SelectItem key="doctor" value="doctor" startContent={<span>🩺</span>}>
-                        Doctor
+                      <SelectItem key="doctor" value="doctor" startContent={<span>👩‍⚕️</span>}>
+                        Enfermero
                       </SelectItem>
                     </Select>
 
@@ -430,55 +453,127 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                 </Button>
 
                 {isLogin && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border">
-                    <h4 className="text-sm font-semibold mb-2">👤 Usuarios de Prueba:</h4>
+                  <div className="mt-4 p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <h4 className="text-sm font-semibold mb-3 text-blue-800">� Acceso Rápido - Usuarios Demo</h4>
                     <div className="grid grid-cols-1 gap-2 text-xs">
-                      <div className="flex justify-between">
-                        <span>👨‍💼 <strong>admin</strong> (Administrador)</span>
+                      <div className="flex justify-between items-center p-2 bg-white rounded border">
+                        <div>
+                          <span className="font-medium">👨‍💼 Administrador</span>
+                          <p className="text-gray-500 text-xs">Acceso completo al sistema</p>
+                        </div>
                         <Button 
                           size="sm" 
-                          variant="light" 
-                          className="h-6 min-w-0 px-2"
-                          onClick={() => setFormData({...formData, username: 'admin', password: 'admin123'})}
+                          color="primary"
+                          variant="flat" 
+                          className="h-7 px-3"
+                          onClick={async () => {
+                            const result = await authService.demoLogin({
+                              id: 'demo-admin',
+                              username: 'admin',
+                              name: 'Administrador Demo',
+                              role: 'administrador'
+                            });
+                            if (result.success) handleDemoLogin(result.user);
+                          }}
                         >
-                          Usar
+                          Ingresar
                         </Button>
                       </div>
-                      <div className="flex justify-between">
-                        <span>👨‍👩‍👧‍👦 <strong>padre</strong> (Padre/Tutor)</span>
+                      <div className="flex justify-between items-center p-2 bg-white rounded border">
+                        <div>
+                          <span className="font-medium">🏥 Director</span>
+                          <p className="text-gray-500 text-xs">Gestión de centro</p>
+                        </div>
                         <Button 
                           size="sm" 
-                          variant="light" 
-                          className="h-6 min-w-0 px-2"
-                          onClick={() => setFormData({...formData, username: 'padre', password: 'padre123'})}
+                          color="secondary"
+                          variant="flat" 
+                          className="h-7 px-3"
+                          onClick={async () => {
+                            const result = await authService.demoLogin({
+                              id: 'demo-director',
+                              username: 'director',
+                              name: 'Director Demo',
+                              role: 'director'
+                            });
+                            if (result.success) handleDemoLogin(result.user);
+                          }}
                         >
-                          Usar
+                          Ingresar
                         </Button>
                       </div>
-                      <div className="flex justify-between">
-                        <span>🏥 <strong>director</strong> (Director)</span>
+                      <div className="flex justify-between items-center p-2 bg-white rounded border">
+                        <div>
+                          <span className="font-medium">👩‍⚕️ Enfermero</span>
+                          <p className="text-gray-500 text-xs">Aplicación de vacunas</p>
+                        </div>
                         <Button 
                           size="sm" 
-                          variant="light" 
-                          className="h-6 min-w-0 px-2"
-                          onClick={() => setFormData({...formData, username: 'director', password: 'director123'})}
+                          color="success"
+                          variant="flat" 
+                          className="h-7 px-3"
+                          onClick={async () => {
+                            const result = await authService.demoLogin({
+                              id: 'demo-enfermero',
+                              username: 'enfermero',
+                              name: 'Enfermero Demo',
+                              role: 'enfermero'
+                            });
+                            if (result.success) handleDemoLogin(result.user);
+                          }}
                         >
-                          Usar
+                          Ingresar
                         </Button>
                       </div>
-                      <div className="flex justify-between">
-                        <span>👩‍⚕️ <strong>doctor</strong> (Doctor)</span>
+                      <div className="flex justify-between items-center p-2 bg-white rounded border">
+                        <div>
+                          <span className="font-medium">�‍�👩‍👧‍👦 Padre</span>
+                          <p className="text-gray-500 text-xs">Consulta de hijos</p>
+                        </div>
                         <Button 
                           size="sm" 
-                          variant="light" 
-                          className="h-6 min-w-0 px-2"
-                          onClick={() => setFormData({...formData, username: 'doctor', password: 'doctor123'})}
+                          color="warning"
+                          variant="flat" 
+                          className="h-7 px-3"
+                          onClick={async () => {
+                            const result = await authService.demoLogin({
+                              id: 'demo-padre',
+                              username: 'padre',
+                              name: 'Padre Demo',
+                              role: 'padre'
+                            });
+                            if (result.success) handleDemoLogin(result.user);
+                          }}
                         >
-                          Usar
+                          Ingresar
                         </Button>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">Haz clic en "Usar" para llenar automáticamente los campos</p>
+                    <div className="mt-3 px-2 py-1 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                      <strong>💡 Acceso sin servidor:</strong> Estos usuarios funcionan aunque el servidor tenga problemas.
+                    </div>
+                    
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <h5 className="text-xs font-semibold mb-2 text-blue-700">🔧 Login tradicional (requiere servidor funcionando):</h5>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="bordered" 
+                          className="h-6 px-2 text-xs"
+                          onClick={() => setFormData({...formData, username: 'admin', password: 'admin123'})}
+                        >
+                          Admin
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="bordered" 
+                          className="h-6 px-2 text-xs"
+                          onClick={() => setFormData({...formData, username: 'testuser', password: 'test123'})}
+                        >
+                          Test
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
