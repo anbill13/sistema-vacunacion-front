@@ -8,7 +8,7 @@ function NinoForm({ formData, handleChange, centros }) {
         type="text"
         label="Nombre Completo"
         name="nombre_completo"
-        value={formData.nombre_completo}
+        value={formData.nombre_completo || ""}
         onChange={handleChange}
         placeholder="Ingrese el nombre completo"
         isRequired
@@ -22,7 +22,7 @@ function NinoForm({ formData, handleChange, centros }) {
         type="date"
         label="Fecha de Nacimiento"
         name="fecha_nacimiento"
-        value={formData.fecha_nacimiento}
+        value={formData.fecha_nacimiento || ""}
         onChange={handleChange}
         isRequired
         variant="bordered"
@@ -43,16 +43,16 @@ function NinoForm({ formData, handleChange, centros }) {
           <span className="text-default-400 text-small">⚥</span>
         }
       >
-        <SelectItem key="Masculino" value="Masculino">Masculino</SelectItem>
-        <SelectItem key="Femenino" value="Femenino">Femenino</SelectItem>
-        <SelectItem key="Otro" value="Otro">Otro</SelectItem>
+        <SelectItem key="Masculino" value="M">Masculino</SelectItem>
+        <SelectItem key="Femenino" value="F">Femenino</SelectItem>
+        <SelectItem key="Otro" value="O">Otro</SelectItem>
       </Select>
       
       <Input
         type="text"
         label="Identificación"
         name="identificacion"
-        value={formData.identificacion}
+        value={formData.identificacion || ""}
         onChange={handleChange}
         placeholder="Número de identificación (si aplica)"
         variant="bordered"
@@ -65,7 +65,7 @@ function NinoForm({ formData, handleChange, centros }) {
         type="text"
         label="Dirección de Residencia"
         name="direccion_residencia"
-        value={formData.direccion_residencia}
+        value={formData.direccion_residencia || ""}
         onChange={handleChange}
         placeholder="Ingrese la dirección completa"
         isRequired
@@ -80,7 +80,7 @@ function NinoForm({ formData, handleChange, centros }) {
         type="text"
         label="Nacionalidad"
         name="nacionalidad"
-        value={formData.nacionalidad}
+        value={formData.nacionalidad || ""}
         onChange={handleChange}
         placeholder="Ingrese la nacionalidad"
         isRequired
@@ -94,7 +94,7 @@ function NinoForm({ formData, handleChange, centros }) {
         type="text"
         label="País de Nacimiento"
         name="pais_nacimiento"
-        value={formData.pais_nacimiento}
+        value={formData.pais_nacimiento || ""}
         onChange={handleChange}
         placeholder="Ingrese el país de nacimiento"
         isRequired
@@ -127,26 +127,12 @@ function NinoForm({ formData, handleChange, centros }) {
         type="tel"
         label="Contacto Principal"
         name="contacto_principal"
-        value={formData.contacto_principal}
+        value={formData.contacto_principal || ""}
         onChange={handleChange}
         placeholder="Número de teléfono de contacto"
         variant="bordered"
         startContent={
           <span className="text-default-400 text-small">📞</span>
-        }
-      />
-      
-      <Input
-        type="text"
-        label="ID Salud Nacional"
-        name="id_salud_nacional"
-        value={formData.id_salud_nacional}
-        onChange={handleChange}
-        placeholder="Número de identificación del sistema de salud (si aplica)"
-        variant="bordered"
-        className="md:col-span-2"
-        startContent={
-          <span className="text-default-400 text-small">🏥</span>
         }
       />
     </div>

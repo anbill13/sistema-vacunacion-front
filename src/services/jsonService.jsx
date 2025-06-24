@@ -7,8 +7,8 @@ const ENTITY_ENDPOINTS = {
   'Vacunas': '/api/vaccines',
   'Lotes_Vacunas': '/api/vaccine-lots',
   'Usuarios': '/api/users',
-  'Ninos': '/api/children',
-  'Padres': '/api/guardians',
+  'Ninos': '/api/pacients',
+  'Padres': '/api/tutors',
   'Historial_Vacunacion': '/api/vaccination-history',
   'Citas': '/api/appointments',
   'Campanas': '/api/campaigns'
@@ -25,15 +25,29 @@ const jsonService = {
       }
 
       const response = await apiService.get(endpoint);
-      console.log(`[jsonService] Get data for ${entityName}:`, response);
-      return Array.isArray(response) ? response : [];
+      console.log(`[jsonService] Raw Response:", ${response}`); // Log raw response
+      let data;
+
+      // Handle different response types
+      if (response && typeof response === 'object' && 'data' in response) {
+        // Axios-like response
+        data = response.data;
+      } else if (response && 'json' in response) {
+        // Fetch-like response
+        data = await response.json();
+      } else {
+        // Fallback if no recognizable structure
+        data = response;
+      }
+
+      console.log(`[jsonService] Parsed Data for ${entityName}:`, data); // Log parsed data
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error(`[jsonService] Error getting data for ${entityName}:`, error);
       return [];
     }
   },
 
-  // Guardar datos de una entidad
   async saveData(entityName, data, method = 'POST') {
     try {
       const endpoint = ENTITY_ENDPOINTS[entityName];
@@ -45,7 +59,6 @@ const jsonService = {
       if (method === 'POST') {
         response = await apiService.post(endpoint, data);
       } else if (method === 'PUT') {
-        // Para PUT, necesitamos el ID en la URL
         const id = this.getEntityId(entityName, data);
         if (!id) {
           throw new Error(`No ID found for entity ${entityName}`);
@@ -56,14 +69,13 @@ const jsonService = {
       }
 
       console.log(`[jsonService] Save data for ${entityName} (${method}):`, response);
-      return response;
+      return response.data || response; // Return parsed data if available
     } catch (error) {
       console.error(`[jsonService] Error saving data for ${entityName}:`, error);
       throw error;
     }
   },
 
-  // Eliminar datos de una entidad
   async deleteData(entityName, id) {
     try {
       const endpoint = ENTITY_ENDPOINTS[entityName];
@@ -73,14 +85,13 @@ const jsonService = {
 
       const response = await apiService.delete(`${endpoint}/${id}`);
       console.log(`[jsonService] Delete data for ${entityName}:`, response);
-      return response;
+      return response.data || response; // Return parsed data if available
     } catch (error) {
       console.error(`[jsonService] Error deleting data for ${entityName}:`, error);
       throw error;
     }
   },
 
-  // Obtener el ID de una entidad según su tipo
   getEntityId(entityName, data) {
     const idMappings = {
       'Centros_Vacunacion': 'id_centro',
@@ -98,7 +109,6 @@ const jsonService = {
     return data[idField] || data.id;
   },
 
-  // Obtener datos por ID
   async getDataById(entityName, id) {
     try {
       const endpoint = ENTITY_ENDPOINTS[entityName];
@@ -108,14 +118,23 @@ const jsonService = {
 
       const response = await apiService.get(`${endpoint}/${id}`);
       console.log(`[jsonService] Get data by ID for ${entityName}:`, response);
-      return response;
+      let data;
+
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = response.data;
+      } else if (response && 'json' in response) {
+        data = await response.json();
+      } else {
+        data = response;
+      }
+
+      return data || {};
     } catch (error) {
       console.error(`[jsonService] Error getting data by ID for ${entityName}:`, error);
       throw error;
     }
   },
 
-  // Búsqueda con filtros
   async searchData(entityName, filters = {}) {
     try {
       const endpoint = ENTITY_ENDPOINTS[entityName];
@@ -125,7 +144,17 @@ const jsonService = {
 
       const response = await apiService.get(endpoint, filters);
       console.log(`[jsonService] Search data for ${entityName}:`, response);
-      return Array.isArray(response) ? response : [];
+      let data;
+
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = response.data;
+      } else if (response && 'json' in response) {
+        data = await response.json();
+      } else {
+        data = response;
+      }
+
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error(`[jsonService] Error searching data for ${entityName}:`, error);
       return [];
