@@ -63,7 +63,6 @@ const floatingButtonStyles = `
 const AdminPage = () => {
   const {
     centrosVacunacion,
-    setCentrosVacunacion,
     directores,
     setDirectores,
     vacunas,
@@ -158,7 +157,8 @@ const AdminPage = () => {
     longitud: '',
     telefono: '',
     director: '',
-    sitio_web: ''
+    sitio_web: '',
+    estado: 'Activo' // Nuevo campo
   });
 
   const [vacunaForm, setVacunaForm] = useState({
@@ -175,11 +175,12 @@ const AdminPage = () => {
   const [loteForm, setLoteForm] = useState({
     id_vacuna: '',
     numero_lote: '',
+    cantidad_total: 0,
+    cantidad_disponible: 0,
     fecha_fabricacion: '',
     fecha_vencimiento: '',
-    cantidad_dosis: 0,
-    temperatura_almacenamiento: '',
-    id_centro: ''
+    id_centro: '',
+    condiciones_almacenamiento: ''
   });
 
   const [usuarioForm, setUsuarioForm] = useState({
@@ -209,7 +210,8 @@ const AdminPage = () => {
       longitud: '',
       telefono: '',
       director: '',
-      sitio_web: ''
+      sitio_web: '',
+      estado: 'Activo' // Nuevo campo
     });
     setShowAddCentroModal(true);
   };
@@ -224,7 +226,8 @@ const AdminPage = () => {
       longitud: centro.longitud || '',
       telefono: centro.telefono || '',
       director: centro.director || '',
-      sitio_web: centro.sitio_web || ''
+      sitio_web: centro.sitio_web || '',
+      estado: centro.estado || 'Activo' // Usar valor existente o por defecto 'Activo'
     });
     setShowAddCentroModal(true);
   };
@@ -267,8 +270,16 @@ const AdminPage = () => {
     e.preventDefault();
     try {
       const newCentro = {
-        ...centroForm,
-        id_centro: editingCentro ? editingCentro.id_centro : undefined
+        id_centro: editingCentro ? editingCentro.id_centro : null,
+        nombre_centro: centroForm.nombre_centro || null,
+        nombre_corto: centroForm.nombre_corto || null,
+        direccion: centroForm.direccion || null,
+        latitud: centroForm.latitud !== '' ? parseFloat(centroForm.latitud) : null,
+        longitud: centroForm.longitud !== '' ? parseFloat(centroForm.longitud) : null,
+        telefono: centroForm.telefono || null,
+        director: centroForm.director || null,
+        sitio_web: centroForm.sitio_web || null,
+        estado: centroForm.estado || 'Activo' // Usar el valor seleccionado
       };
 
       if (!newCentro.nombre_centro || !newCentro.direccion) {
@@ -302,7 +313,8 @@ const AdminPage = () => {
         longitud: '',
         telefono: '',
         director: '',
-        sitio_web: ''
+        sitio_web: '',
+        estado: 'Activo' // Restablecer a valor por defecto
       });
       setEditingCentro(null);
     } catch (error) {
@@ -397,11 +409,12 @@ const AdminPage = () => {
     setLoteForm({
       id_vacuna: '',
       numero_lote: '',
+      cantidad_total: 0,
+      cantidad_disponible: 0,
       fecha_fabricacion: '',
       fecha_vencimiento: '',
-      cantidad_dosis: 0,
-      temperatura_almacenamiento: '',
-      id_centro: ''
+      id_centro: '',
+      condiciones_almacenamiento: ''
     });
     setShowAddLoteModal(true);
   };
@@ -411,11 +424,12 @@ const AdminPage = () => {
     setLoteForm({
       id_vacuna: lote.id_vacuna || '',
       numero_lote: lote.numero_lote || '',
+      cantidad_total: lote.cantidad_total || 0,
+      cantidad_disponible: lote.cantidad_disponible || 0,
       fecha_fabricacion: lote.fecha_fabricacion ? lote.fecha_fabricacion.split('T')[0] : '',
       fecha_vencimiento: lote.fecha_vencimiento ? lote.fecha_vencimiento.split('T')[0] : '',
-      cantidad_dosis: lote.cantidad_dosis || 0,
-      temperatura_almacenamiento: lote.temperatura_almacenamiento || '',
-      id_centro: lote.id_centro || ''
+      id_centro: lote.id_centro || '',
+      condiciones_almacenamiento: lote.condiciones_almacenamiento || ''
     });
     setShowAddLoteModal(true);
   };
@@ -424,7 +438,10 @@ const AdminPage = () => {
     const { name, value } = e.target;
     setLoteForm({
       ...loteForm,
-      [name]: name === 'cantidad_dosis' ? parseInt(value, 10) : value
+      [name]:
+        name === 'cantidad_total' || name === 'cantidad_disponible'
+          ? parseInt(value, 10)
+          : value
     });
   };
 
@@ -452,11 +469,12 @@ const AdminPage = () => {
       setLoteForm({
         id_vacuna: '',
         numero_lote: '',
+        cantidad_total: 0,
+        cantidad_disponible: 0,
         fecha_fabricacion: '',
         fecha_vencimiento: '',
-        cantidad_dosis: 0,
-        temperatura_almacenamiento: '',
-        id_centro: ''
+        id_centro: '',
+        condiciones_almacenamiento: ''
       });
       setEditingLote(null);
     } catch (error) {
@@ -638,18 +656,13 @@ const AdminPage = () => {
       try {
         const usuariosCargados = await usuariosService.getUsuarios();
         setUsuarios(usuariosCargados);
-        setDirectores(usuariosCargados.filter(u => u.role === 'director'));
-
-        const centrosCargados = centrosService.getCentros();
-        console.log('Centros cargados en AdminPage:', centrosCargados);
-        setCentrosVacunacion(centrosCargados);
       } catch (error) {
         console.error('Error al cargar datos:', error);
         setUsuarios([]);
       }
     };
     loadData();
-  }, [setDirectores, setCentrosVacunacion]);
+  }, []); // Eliminar dependencias innecesarias
 
   return (
     <div className="space-y-6 p-4 relative">
@@ -917,7 +930,8 @@ const AdminPage = () => {
                       <th>Vacuna</th>
                       <th>Número de Lote</th>
                       <th>Fecha Vencimiento</th>
-                      <th>Cantidad Dosis</th>
+                      <th>Cantidad Total</th>
+                      <th>Cantidad Disponible</th>
                       <th>Centro Asignado</th>
                       <th>Acciones</th>
                     </tr>
@@ -951,7 +965,10 @@ const AdminPage = () => {
                             </div>
                           </td>
                           <td>
-                            <span className="badge badge-success">{lote.cantidad_dosis}</span>
+                            <span className="badge badge-success">{lote.cantidad_total}</span>
+                          </td>
+                          <td>
+                            <span className="badge badge-info">{lote.cantidad_disponible}</span>
                           </td>
                           <td>
                             <div className="cell-content">
@@ -1276,6 +1293,20 @@ const AdminPage = () => {
                       placeholder="https://..."
                     />
                   </div>
+
+                  <div className="form-group">
+                    <label className="block text-sm font-medium mb-1">Estado</label>
+                    <select
+                      name="estado"
+                      value={centroForm.estado}
+                      onChange={handleCentroFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    >
+                      <option value="Activo">Activo</option>
+                      <option value="Inactivo">Inactivo</option>
+                    </select>
+                  </div>
                 </form>
               </ModalBody>
               <ModalFooter>
@@ -1529,26 +1560,27 @@ const AdminPage = () => {
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Cantidad de Dosis</label>
+                      <label>Cantidad Total</label>
                       <input
                         type="number"
                         min="1"
-                        name="cantidad_dosis"
-                        value={loteForm.cantidad_dosis}
+                        name="cantidad_total"
+                        value={loteForm.cantidad_total}
                         onChange={handleLoteFormChange}
                         className="form-control"
                         required
                       />
                     </div>
                     <div className="form-group">
-                      <label>Temperatura de Almacenamiento</label>
+                      <label>Cantidad Disponible</label>
                       <input
-                        type="text"
-                        name="temperatura_almacenamiento"
-                        value={loteForm.temperatura_almacenamiento}
+                        type="number"
+                        min="0"
+                        name="cantidad_disponible"
+                        value={loteForm.cantidad_disponible}
                         onChange={handleLoteFormChange}
                         className="form-control"
-                        placeholder="Ej: 2-8°C"
+                        required
                       />
                     </div>
                   </div>
@@ -1568,6 +1600,18 @@ const AdminPage = () => {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Condiciones de Almacenamiento</label>
+                    <input
+                      type="text"
+                      name="condiciones_almacenamiento"
+                      value={loteForm.condiciones_almacenamiento}
+                      onChange={handleLoteFormChange}
+                      className="form-control"
+                      placeholder="Ej: 2-8°C, proteger de la luz"
+                    />
                   </div>
                 </form>
               </ModalBody>

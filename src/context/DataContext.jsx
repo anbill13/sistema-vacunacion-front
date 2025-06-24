@@ -117,12 +117,97 @@ export const DataProvider = ({ children }) => {
     const loadData = async () => {
       if (!mounted) return;
       
+      console.log('[DataContext] Loading all data...');
+      setLoading(true);
+      setError(null);
+      
       try {
-        await reloadData();
+        // Cargar datos desde el backend
+        const [
+          centrosData,
+          vacunasData,
+          lotesData,
+          dosisData,
+          usuariosData
+        ] = await Promise.allSettled([
+          centrosService.getCentros(),
+          vacunasService.getVacunas(),
+          vacunasService.getLotes(),
+          vacunasService.getDosisAplicadas(),
+          usuariosService.getUsuarios()
+        ]);
+
+        if (!mounted) return; // Check again after async operations
+
+        // Procesar centros
+        if (centrosData.status === 'fulfilled') {
+          setCentrosVacunacion(Array.isArray(centrosData.value) ? centrosData.value : []);
+          console.log('[DataContext] Centros loaded:', centrosData.value);
+        } else {
+          console.error('[DataContext] Error loading centros:', centrosData.reason);
+          setCentrosVacunacion([]);
+        }
+
+        // Procesar vacunas
+        if (vacunasData.status === 'fulfilled') {
+          setVacunas(Array.isArray(vacunasData.value) ? vacunasData.value : []);
+          console.log('[DataContext] Vacunas loaded:', vacunasData.value);
+        } else {
+          console.error('[DataContext] Error loading vacunas:', vacunasData.reason);
+          setVacunas([]);
+        }
+
+        // Procesar lotes
+        if (lotesData.status === 'fulfilled') {
+          setLotesVacunas(Array.isArray(lotesData.value) ? lotesData.value : []);
+          console.log('[DataContext] Lotes loaded:', lotesData.value);
+        } else {
+          console.error('[DataContext] Error loading lotes:', lotesData.reason);
+          setLotesVacunas([]);
+        }
+
+        // Procesar dosis aplicadas
+        if (dosisData.status === 'fulfilled') {
+          setDosisAplicadas(Array.isArray(dosisData.value) ? dosisData.value : []);
+          console.log('[DataContext] Dosis aplicadas loaded:', dosisData.value);
+        } else {
+          console.error('[DataContext] Error loading dosis aplicadas:', dosisData.reason);
+          setDosisAplicadas([]);
+        }
+
+        // Procesar usuarios
+        if (usuariosData.status === 'fulfilled') {
+          const usuarios = Array.isArray(usuariosData.value) ? usuariosData.value : [];
+          
+          // Filtrar directores
+          const directoresData = usuarios.filter(user => user.role === 'director');
+          setDirectores(directoresData);
+          console.log('[DataContext] Directores loaded:', directoresData);
+
+          // Filtrar tutores/padres
+          const tutoresData = usuarios.filter(user => user.role === 'padre' || user.role === 'tutor');
+          setTutores(tutoresData.map(tutor => ({
+            ...tutor,
+            id_tutor: tutor.id_usuario || tutor.id,
+            nombre: tutor.name || tutor.nombre || '',
+            apellido: tutor.apellido || '',
+            identificacion: tutor.identificacion || tutor.cedula || tutor.username || tutor.email || ''
+          })));
+          console.log('[DataContext] Tutores loaded:', tutoresData);
+        } else {
+          console.error('[DataContext] Error loading usuarios:', usuariosData.reason);
+          setDirectores([]);
+          setTutores([]);
+        }
+
+        console.log('[DataContext] All data loaded successfully');
       } catch (error) {
         console.error('[DataContext] Error in loadData:', error);
         if (mounted) {
           setError(error.message || 'Error al cargar datos');
+        }
+      } finally {
+        if (mounted) {
           setLoading(false);
         }
       }
@@ -133,7 +218,7 @@ export const DataProvider = ({ children }) => {
     return () => {
       mounted = false;
     };
-  }, [currentUser, reloadData]); // Recargar cuando cambie el usuario
+  }, [currentUser]); // Solo recargar cuando cambie el usuario
 
   const value = {
     // Estados

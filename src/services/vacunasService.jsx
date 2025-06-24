@@ -114,11 +114,12 @@ const vacunasService = {
       const response = await apiService.post('/api/vaccine-lots', {
         id_vacuna: loteData.id_vacuna,
         numero_lote: loteData.numero_lote,
+        cantidad_total: parseInt(loteData.cantidad_total) || 0,
+        cantidad_disponible: parseInt(loteData.cantidad_disponible) || 0,
         fecha_fabricacion: loteData.fecha_fabricacion,
         fecha_vencimiento: loteData.fecha_vencimiento,
-        cantidad_dosis: parseInt(loteData.cantidad_dosis) || 0,
-        temperatura_almacenamiento: loteData.temperatura_almacenamiento || null,
-        id_centro: loteData.id_centro || null
+        id_centro: loteData.id_centro || null,
+        condiciones_almacenamiento: loteData.condiciones_almacenamiento || ''
       });
       console.log('[vacunasService] Create lote response:', response);
       return response;
@@ -134,11 +135,12 @@ const vacunasService = {
       const response = await apiService.put(`/api/vaccine-lots/${id}`, {
         id_vacuna: loteData.id_vacuna,
         numero_lote: loteData.numero_lote,
+        cantidad_total: parseInt(loteData.cantidad_total) || 0,
+        cantidad_disponible: parseInt(loteData.cantidad_disponible) || 0,
         fecha_fabricacion: loteData.fecha_fabricacion,
         fecha_vencimiento: loteData.fecha_vencimiento,
-        cantidad_dosis: parseInt(loteData.cantidad_dosis) || 0,
-        temperatura_almacenamiento: loteData.temperatura_almacenamiento || null,
-        id_centro: loteData.id_centro || null
+        id_centro: loteData.id_centro || null,
+        condiciones_almacenamiento: loteData.condiciones_almacenamiento || ''
       });
       console.log('[vacunasService] Update lote response:', response);
       return response;
