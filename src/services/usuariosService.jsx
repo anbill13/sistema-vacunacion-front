@@ -10,14 +10,30 @@ const usuariosService = {
       console.log('[usuariosService] Get usuarios response:', response);
       
       const usuarios = Array.isArray(response) ? response : [];
-      return usuarios.map(u => ({
-        ...u,
-        name: u.nombre || u.name || u.username,
-        role: (u.rol || u.role || 'usuario').toLowerCase(),
-        rol: (u.rol || u.role || 'usuario').toLowerCase(),
-        id: u.id_usuario || u.id,
-        active: u.estado === 'Activo' || u.active !== false
-      }));
+      return usuarios.map(u => {
+        // Determinar el estado activo de forma más explícita
+        let isActive = true; // Por defecto activo
+        
+        if (u.estado) {
+          // Si existe el campo estado, usarlo
+          isActive = u.estado === 'Activo';
+        } else if (u.active !== undefined) {
+          // Si existe el campo active, usarlo
+          isActive = u.active === true;
+        }
+        
+        console.log(`[usuariosService] Usuario ${u.nombre || u.name}: estado="${u.estado}", active="${u.active}", isActive="${isActive}"`);
+        
+        return {
+          ...u,
+          name: u.nombre || u.name || u.username,
+          role: (u.rol || u.role || 'usuario').toLowerCase(),
+          rol: (u.rol || u.role || 'usuario').toLowerCase(),
+          id: u.id_usuario || u.id,
+          active: isActive,
+          estado: u.estado || (isActive ? 'Activo' : 'Inactivo')
+        };
+      });
     } catch (error) {
       console.error('[usuariosService] Error getting usuarios:', error);
       return [];
@@ -47,24 +63,69 @@ const usuariosService = {
   // Crear un nuevo usuario
   async createUsuario(userData) {
     try {
+      // Validaciones básicas antes de enviar
+      if (!userData.nombre && !userData.name) {
+        throw new Error('El nombre es requerido');
+      }
+      if (!userData.username) {
+        throw new Error('El nombre de usuario es requerido');
+      }
+      if (!userData.password) {
+        throw new Error('La contraseña es requerida');
+      }
+      if (userData.password.length < 6) {
+        throw new Error('La contraseña debe tener al menos 6 caracteres');
+      }
+
       const requestData = {
         nombre: userData.name || userData.nombre,
         username: userData.username,
         password: userData.password,
-        email: userData.email || null,
-        telefono: userData.telefono || userData.phone || null,
-        rol: userData.role || userData.rol || 'usuario',
-        id_centro: userData.id_centro !== undefined ? userData.id_centro : null
+        rol: userData.role || userData.rol || 'usuario'
       };
+
+      // Solo agregar email si tiene valor
+      if (userData.email && userData.email.trim() !== '') {
+        requestData.email = userData.email.trim();
+      }
+
+      // Solo agregar telefono si tiene valor
+      if (userData.telefono && userData.telefono.trim() !== '') {
+        requestData.telefono = userData.telefono.trim();
+      }
+
+      // Solo agregar id_centro si tiene un valor válido (no null, no undefined, no vacío)
+      if (userData.id_centro && userData.id_centro !== null && userData.id_centro !== '') {
+        requestData.id_centro = userData.id_centro;
+      }
       
       console.log('\n=== CREATE USUARIO SERVICE ===');
       console.log('[usuariosService] Datos recibidos:', userData);
       console.log('[usuariosService] Request data enviado:', requestData);
       console.log('[usuariosService] id_centro final:', requestData.id_centro, typeof requestData.id_centro);
       console.log('==============================\n');
+      
       const response = await apiService.post('/api/users', requestData);
       console.log('[usuariosService] Create usuario response:', response);
       
+      // El backend devuelve {id_usuario: null} cuando crea exitosamente
+      // pero no devuelve los datos completos del usuario
+      if (response && (response.id_usuario === null || response.id_usuario)) {
+        // Usuario creado exitosamente, devolver los datos que enviamos
+        return {
+          id: response.id_usuario,
+          name: requestData.nombre,
+          username: requestData.username,
+          role: requestData.rol.toLowerCase(),
+          rol: requestData.rol.toLowerCase(),
+          email: requestData.email,
+          telefono: requestData.telefono,
+          id_centro: requestData.id_centro,
+          active: true
+        };
+      }
+      
+      // Fallback para respuestas completas del backend
       return {
         ...response,
         name: response.nombre || response.name || response.username,
@@ -75,7 +136,25 @@ const usuariosService = {
       };
     } catch (error) {
       console.error('[usuariosService] Error creating usuario:', error);
-      throw new Error(error.message || 'Error al crear usuario');
+      
+      // Mejorar el manejo de errores específicos
+      let errorMessage = 'Error al crear usuario';
+      
+      if (error.message) {
+        if (error.message.includes('Validación fallida')) {
+          errorMessage = 'Los datos ingresados no son válidos. Verifique que todos los campos requeridos estén completos.';
+        } else if (error.message.includes('username') || error.message.includes('usuario')) {
+          errorMessage = 'El nombre de usuario ya existe. Por favor, elija otro.';
+        } else if (error.message.includes('email')) {
+          errorMessage = 'El email ya está registrado. Por favor, use otro email.';
+        } else if (error.message.includes('servidor') || error.message.includes('conexión')) {
+          errorMessage = 'Error de conexión con el servidor. Verifique su conexión a internet.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
   },
 
@@ -86,18 +165,41 @@ const usuariosService = {
       const updateData = {
         nombre: userData.name || userData.nombre,
         username: userData.username,
-        password: userData.password, // Siempre requerido por el backend
-        email: userData.email || null,
-        telefono: userData.telefono || userData.phone || null,
-        rol: userData.role || userData.rol || 'usuario',
-        id_centro: userData.id_centro !== undefined ? userData.id_centro : null
+        rol: userData.role || userData.rol || 'usuario'
       };
+
+      // Solo agregar password si se proporciona
+      if (userData.password && userData.password.trim() !== '') {
+        updateData.password = userData.password.trim();
+      }
+
+      // Solo agregar email si tiene valor
+      if (userData.email && userData.email.trim() !== '') {
+        updateData.email = userData.email.trim();
+      }
+
+      // Solo agregar telefono si tiene valor
+      if (userData.telefono && userData.telefono.trim() !== '') {
+        updateData.telefono = userData.telefono.trim();
+      }
+
+      // Solo agregar id_centro si tiene un valor válido (no null, no undefined, no vacío)
+      if (userData.id_centro && userData.id_centro !== null && userData.id_centro !== '') {
+        updateData.id_centro = userData.id_centro;
+      }
+
+      // Agregar estado del usuario (activo/inactivo)
+      if (userData.active !== undefined) {
+        updateData.estado = userData.active ? 'Activo' : 'Inactivo';
+      }
       
       console.log('\n=== UPDATE USUARIO SERVICE ===');
       console.log('[usuariosService] ID a actualizar:', id);
       console.log('[usuariosService] Datos recibidos:', userData);
       console.log('[usuariosService] Update data enviado:', updateData);
       console.log('[usuariosService] id_centro final:', updateData.id_centro, typeof updateData.id_centro);
+      console.log('[usuariosService] estado final:', updateData.estado);
+      console.log('[usuariosService] Campos enviados:', Object.keys(updateData));
       console.log('==============================\n');
       const response = await apiService.put(`/api/users/${id}`, updateData);
       console.log('[usuariosService] Update usuario response:', response);
@@ -125,6 +227,68 @@ const usuariosService = {
     } catch (error) {
       console.error('[usuariosService] Error deleting usuario:', error);
       throw new Error(error.message || 'Error al eliminar usuario');
+    }
+  },
+
+
+
+  // Activar/Desactivar un usuario usando los endpoints correctos
+  async updateUsuarioStatus(id, isActive) {
+    try {
+      console.log('\n=== UPDATE USUARIO STATUS ===');
+      console.log('[usuariosService] ID a actualizar:', id);
+      console.log('[usuariosService] Acción:', isActive ? 'ACTIVAR' : 'DESACTIVAR');
+      console.log('=============================\n');
+      
+      let response;
+      
+      if (isActive) {
+        // Activar usuario usando PUT /api/users/{id}/activate
+        console.log('[usuariosService] Activando usuario...');
+        response = await apiService.put(`/api/users/${id}/activate`);
+      } else {
+        // Desactivar usuario usando DELETE /api/users/{id}
+        console.log('[usuariosService] Desactivando usuario...');
+        response = await apiService.delete(`/api/users/${id}`);
+      }
+      
+      console.log('[usuariosService] Response:', response);
+      
+      // El backend puede devolver respuesta vacía para indicar éxito
+      // Devolver una respuesta consistente
+      return {
+        success: true,
+        id: id,
+        active: isActive,
+        estado: isActive ? 'Activo' : 'Inactivo',
+        message: `Usuario ${isActive ? 'activado' : 'desactivado'} correctamente`,
+        response: response || 'OK'
+      };
+      
+    } catch (error) {
+      console.error('[usuariosService] Error updating usuario status:', error);
+      console.error('[usuariosService] Error response data:', error.response?.data);
+      console.error('[usuariosService] Error status:', error.response?.status);
+      console.error('[usuariosService] Error headers:', error.response?.headers);
+      
+      // Intentar extraer más información del error
+      let errorMessage = 'Error al actualizar estado del usuario';
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data.errors) {
+          // Si hay errores de validación específicos
+          errorMessage = `Validación fallida: ${JSON.stringify(error.response.data.errors)}`;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   },
 
