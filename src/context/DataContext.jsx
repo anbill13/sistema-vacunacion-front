@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import centrosService from '../services/centrosService.jsx';
 import vacunasService from '../services/vacunasService.jsx';
 import usuariosService from '../services/usuariosService.jsx';
+import citasService from '../services/citasService.jsx';
 import { useAuth } from './AuthContext.jsx';
 
 const DataContext = createContext();
@@ -14,6 +15,7 @@ export const DataProvider = ({ children }) => {
   const [lotesVacunas, setLotesVacunas] = useState([]);
   const [dosisAplicadas, setDosisAplicadas] = useState([]);
   const [directores, setDirectores] = useState([]);
+  const [citas, setCitas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { currentUser } = useAuth();
@@ -31,13 +33,15 @@ export const DataProvider = ({ children }) => {
         vacunasData,
         lotesData,
         dosisData,
-        usuariosData
+        usuariosData,
+        citasData
       ] = await Promise.allSettled([
         centrosService.getCentros(),
         vacunasService.getVacunas(),
         vacunasService.getLotes(),
         vacunasService.getDosisAplicadas(),
-        usuariosService.getUsuarios()
+        usuariosService.getUsuarios(),
+        citasService.getCitas()
       ]);
 
       // Procesar centros
@@ -99,6 +103,15 @@ export const DataProvider = ({ children }) => {
         console.error('[DataContext] Error loading usuarios:', usuariosData.reason);
         setDirectores([]);
         setTutores([]);
+      }
+
+      // Procesar citas
+      if (citasData.status === 'fulfilled') {
+        setCitas(Array.isArray(citasData.value) ? citasData.value : []);
+        console.log('[DataContext] Citas loaded:', citasData.value);
+      } else {
+        console.error('[DataContext] Error loading citas:', citasData.reason);
+        setCitas([]);
       }
 
       console.log('[DataContext] All data loaded successfully');
@@ -229,6 +242,7 @@ export const DataProvider = ({ children }) => {
     lotesVacunas,
     dosisAplicadas,
     directores,
+    citas,
     loading,
     error,
     
@@ -240,6 +254,7 @@ export const DataProvider = ({ children }) => {
     setLotesVacunas,
     setDosisAplicadas,
     setDirectores,
+    setCitas,
     
     // Función para recargar datos
     reloadData
