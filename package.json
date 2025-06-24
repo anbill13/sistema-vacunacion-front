@@ -5,6 +5,7 @@
   "dependencies": {
     "@nextui-org/react": "^2.6.11",
     "axios": "^1.10.0",
+    "date-fns": "^4.1.0",
     "framer-motion": "^12.18.1",
     "leaflet": "^1.9.4",
     "react": "^19.1.0",
