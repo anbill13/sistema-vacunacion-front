@@ -47,15 +47,22 @@ const usuariosService = {
   // Crear un nuevo usuario
   async createUsuario(userData) {
     try {
-      const response = await apiService.post('/api/users', {
+      const requestData = {
         nombre: userData.name || userData.nombre,
         username: userData.username,
         password: userData.password,
         email: userData.email || null,
         telefono: userData.telefono || userData.phone || null,
         rol: userData.role || userData.rol || 'usuario',
-        id_centro: userData.id_centro || userData.centroId || null
-      });
+        id_centro: userData.id_centro !== undefined ? userData.id_centro : null
+      };
+      
+      console.log('\n=== CREATE USUARIO SERVICE ===');
+      console.log('[usuariosService] Datos recibidos:', userData);
+      console.log('[usuariosService] Request data enviado:', requestData);
+      console.log('[usuariosService] id_centro final:', requestData.id_centro, typeof requestData.id_centro);
+      console.log('==============================\n');
+      const response = await apiService.post('/api/users', requestData);
       console.log('[usuariosService] Create usuario response:', response);
       
       return {
@@ -75,15 +82,24 @@ const usuariosService = {
   // Actualizar un usuario existente
   async updateUsuario(id, userData) {
     try {
-      const response = await apiService.put(`/api/users/${id}`, {
+      // Preparar datos para envío
+      const updateData = {
         nombre: userData.name || userData.nombre,
         username: userData.username,
+        password: userData.password, // Siempre requerido por el backend
         email: userData.email || null,
         telefono: userData.telefono || userData.phone || null,
         rol: userData.role || userData.rol || 'usuario',
-        id_centro: userData.id_centro || userData.centroId || null,
-        estado: userData.active !== undefined ? (userData.active ? 'Activo' : 'Inactivo') : 'Activo'
-      });
+        id_centro: userData.id_centro !== undefined ? userData.id_centro : null
+      };
+      
+      console.log('\n=== UPDATE USUARIO SERVICE ===');
+      console.log('[usuariosService] ID a actualizar:', id);
+      console.log('[usuariosService] Datos recibidos:', userData);
+      console.log('[usuariosService] Update data enviado:', updateData);
+      console.log('[usuariosService] id_centro final:', updateData.id_centro, typeof updateData.id_centro);
+      console.log('==============================\n');
+      const response = await apiService.put(`/api/users/${id}`, updateData);
       console.log('[usuariosService] Update usuario response:', response);
       
       return {
