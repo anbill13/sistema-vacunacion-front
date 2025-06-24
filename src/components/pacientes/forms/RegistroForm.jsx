@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import NinoForm from "./NinoForm";
 import PadreForm from "./PadreForm";
 import { Button, Divider, Card, CardBody, Tabs, Tab } from "@nextui-org/react";
-import apiService from "../../../services/apiService";
+import jsonService from "../../../services/jsonService";
 
 export default function RegistroForm({
   onClose,
@@ -11,12 +11,13 @@ export default function RegistroForm({
   ninoToEdit,
   onUpdateNino,
   onUpdateTutor,
-  tutores,
+  tutores: initialTutores = [], // Default to empty array if undefined
   centros,
 }) {
   const [loading, setLoading] = useState(false);
+  const [loadingTutors, setLoadingTutors] = useState(false); // Renamed for clarity
   const isEditMode = !!ninoToEdit;
-  const [paso, setPaso] = useState(1);
+  const [paso, setPaso] = useState(1); // Start with Tutor info
   const [formData, setFormData] = useState({
     nombre_completo: "",
     identificacion: "",
@@ -27,7 +28,6 @@ export default function RegistroForm({
     pais_nacimiento: "",
     id_centro_salud: "",
     contacto_principal: "",
-    id_salud_nacional: "",
   });
   const [padreData, setPadreData] = useState({
     nombre_completo: "",
@@ -40,19 +40,46 @@ export default function RegistroForm({
   const [tutorExistente, setTutorExistente] = useState("");
   const [usarTutorExistente, setUsarTutorExistente] = useState(false);
   const [busquedaCedula, setBusquedaCedula] = useState("");
-  const [tutoresFiltrados, setTutoresFiltrados] = useState([]);
+  const [tutoresFiltrados, setTutoresFiltrados] = useState([]); // Initialize as empty array
   const [error, setError] = useState("");
+  const [tutores, setTutores] = useState(initialTutores); // Initialize with prop, default to empty array
+
+  // Fetch tutors from /api/tutors when usarTutorExistente becomes true
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchTutors = async () => {
+      if (usarTutorExistente && isMounted) {
+        setLoadingTutors(true); // Start loading
+        try {
+          const data = await jsonService.getData("Padres"); // Use jsonService
+          console.log("[RegistroForm] Parsed Tutor Data:", data); // Log parsed data
+          setTutores(data || []);
+        } catch (err) {
+          console.error("[RegistroForm] Error fetching tutors:", err);
+          setTutores([]); // Fallback to empty array on error
+          setError("Error al cargar los tutores. Intenta de nuevo.");
+        } finally {
+          setLoadingTutors(false); // End loading
+        }
+      }
+    };
+
+    fetchTutors();
+
+    return () => {
+      isMounted = false; // Cleanup to prevent state updates on unmounted component
+    };
+  }, [usarTutorExistente]); // Trigger on usarTutorExistente change
 
   useEffect(() => {
-    const todosTutores = [...tutores];
-    const filtrados =
-      busquedaCedula.trim() === ""
-        ? todosTutores
-        : todosTutores.filter((tutor) =>
-            (tutor.identificacion || "").toLowerCase().includes(busquedaCedula.toLowerCase())
-          );
+    const filtrados = busquedaCedula.trim() === ""
+      ? tutores
+      : tutores.filter((tutor) =>
+          (tutor.identificacion || "").toLowerCase().includes(busquedaCedula.toLowerCase())
+        );
     setTutoresFiltrados(filtrados);
-  }, [busquedaCedula, tutores, isEditMode]);
+  }, [busquedaCedula, tutores]);
 
   useEffect(() => {
     if (isEditMode && ninoToEdit) {
@@ -66,9 +93,7 @@ export default function RegistroForm({
         pais_nacimiento: ninoToEdit.pais_nacimiento || "",
         id_centro_salud: ninoToEdit.id_centro_salud || "",
         contacto_principal: ninoToEdit.contacto_principal || "",
-        id_salud_nacional: ninoToEdit.id_salud_nacional || "",
       });
-
       if (ninoToEdit.id_tutor) {
         setUsarTutorExistente(true);
         setTutorExistente(ninoToEdit.id_tutor);
@@ -78,18 +103,12 @@ export default function RegistroForm({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData({ ...formData, [name]: value });
   };
 
   const handlePadreChange = (e) => {
     const { name, value } = e.target;
-    setPadreData({
-      ...padreData,
-      [name]: value,
-    });
+    setPadreData({ ...padreData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
@@ -101,65 +120,46 @@ export default function RegistroForm({
       setPaso(2);
     } else {
       try {
-        if (isEditMode) {
-          let tutorIdToUse = ninoToEdit.id_tutor;
-          if (usarTutorExistente) {
-            tutorIdToUse = tutorExistente;
-            const tutorYaExiste = tutores.some((t) => t.id_tutor === tutorExistente);
-            if (!tutorYaExiste) {
-              // No necesitamos crear un nuevo tutor aquí, solo actualizar
-            }
-          }
-          const updatedNino = {
-            ...ninoToEdit,
-            ...formData,
-            id_tutor: tutorIdToUse,
-            fecha_actualizacion: new Date().toISOString(),
-          };
-          onUpdateNino(updatedNino);
-        } else {
-          let tutorId;
-          if (usarTutorExistente) {
-            tutorId = tutorExistente;
+        const response = await jsonService.saveData("Ninos", {
+          nombre_completo: formData.nombre_completo,
+          identificacion: formData.identificacion,
+          nacionalidad: formData.nacionalidad,
+          pais_nacimiento: formData.pais_nacimiento,
+          fecha_nacimiento: formData.fecha_nacimiento,
+          genero: formData.genero,
+          direccion_residencia: formData.direccion_residencia,
+          id_centro_salud: formData.id_centro_salud,
+          contacto_principal: formData.contacto_principal,
+          tutores: !usarTutorExistente ? [{
+            nombre: padreData.nombre_completo,
+            relacion: padreData.relacion,
+            nacionalidad: formData.nacionalidad,
+            identificacion: padreData.identificacion,
+            telefono: padreData.telefono,
+            email: padreData.correo_electronico,
+            direccion: padreData.direccion,
+            tipo_relacion: "TutorLegal",
+          }] : [],
+          tutor_ids: usarTutorExistente ? [tutorExistente] : [],
+        }, isEditMode ? 'PUT' : 'POST');
+        const data = response.data || response;
+        if ((response.status && response.status === 201) || response.id_niño) {
+          if (!isEditMode) {
+            onNinoAdd({ ...formData, id_niño: data.id_paciente || data.id_niño, id_tutor: tutorExistente || data.tutores?.[0]?.id_tutor });
           } else {
-            const newTutor = {
-              id_niño: null, // Se asignará después de crear el niño
-              nombre: padreData.nombre_completo,
-              identificacion: padreData.identificacion,
-              relacion: padreData.relacion,
-              telefono: padreData.telefono,
-              email: padreData.correo_electronico,
-              direccion: padreData.direccion,
-              nacionalidad: formData.nacionalidad, // Usar nacionalidad del niño por ahora
-            };
-            const response = await apiService.post("/api/guardians", newTutor);
-            tutorId = response.id_tutor;
-            onTutorAdd({ ...newTutor, id_tutor: tutorId });
+            onUpdateNino({ ...formData, id_niño: ninoToEdit.id_niño, id_tutor: tutorExistente || data.tutores?.[0]?.id_tutor });
           }
-
-          const newNino = {
-            ...formData,
-            id_niño: `temp-${Math.random()}`,
-            id_tutor: tutorId,
-            fecha_creacion: new Date().toISOString(),
-            fecha_actualizacion: new Date().toISOString(),
-            activo: true,
-          };
-          onNinoAdd(newNino);
+          onClose();
+        } else {
+          throw new Error(data.message || "Error al crear paciente");
         }
-
-        onClose();
       } catch (err) {
-        setError("Error al procesar el registro. Intenta nuevamente.");
+        setError(err.message || "Error al procesar el registro. Intenta nuevamente.");
         console.error("Error en handleSubmit:", err);
       } finally {
         setLoading(false);
       }
     }
-  };
-
-  const handleBack = () => {
-    setPaso(1);
   };
 
   return (
@@ -180,7 +180,7 @@ export default function RegistroForm({
           title={
             <div className="flex items-center space-x-2">
               <span className="text-lg">1</span>
-              <span>Información del Paciente</span>
+              <span>Información del Tutor</span>
             </div>
           }
         />
@@ -189,126 +189,89 @@ export default function RegistroForm({
           title={
             <div className="flex items-center space-x-2">
               <span className="text-lg">2</span>
-              <span>Información del Tutor</span>
+              <span>Información del Paciente</span>
             </div>
           }
-          isDisabled={paso < 2}
+          isDisabled={paso < 2 || !tutorExistente}
         />
       </Tabs>
       <form onSubmit={handleSubmit} className="space-y-6">
         {paso === 1 ? (
           <div className="space-y-4">
-            <h4 className="text-xl font-semibold">
-              {isEditMode ? "Editar Información del Paciente" : "Información del Paciente"}
-            </h4>
-            <NinoForm formData={formData} handleChange={handleChange} centros={centros} />
-          </div>
-        ) : (
-          <div>
             <h4 className="text-xl font-semibold">Información del Tutor</h4>
             <Card shadow="sm">
               <CardBody className="space-y-4">
                 <Button
                   color={usarTutorExistente ? "primary" : "default"}
                   variant="bordered"
-                  onClick={() => setUsarTutorExistente((v) => !v)}
+                  onClick={() => setUsarTutorExistente(true)} // Set to true on click
                   className="mb-2"
                 >
-                  El padre existe
+                  El tutor existe
                 </Button>
-                {usarTutorExistente ? (
+                {usarTutorExistente && (
                   <div>
-                    <input
-                      type="text"
-                      placeholder="Ingrese la cédula del padre"
-                      className="input input-bordered w-full mb-2"
-                      value={busquedaCedula || ""}
-                      onChange={(e) => setBusquedaCedula(e.target.value)}
-                    />
-                    {busquedaCedula.trim() !== "" ? (
-                      <div className="space-y-2">
-                        {tutoresFiltrados
-                          .filter((t) =>
-                            (t.identificacion || "").toLowerCase().includes(busquedaCedula.toLowerCase())
-                          )
-                          .map((usuarioPadre, idx) => {
-                            const yaEsTutor = tutores.some((t) => t.id_tutor === usuarioPadre.id_tutor);
-                            return (
-                              <Card
-                                shadow={tutorExistente === usuarioPadre.id_tutor ? "md" : "xs"}
-                                className={`mb-2 cursor-pointer ${
-                                  tutorExistente === usuarioPadre.id_tutor
-                                    ? "border-2 border-success-500"
-                                    : ""
-                                }`}
-                                key={usuarioPadre.id_tutor + "_" + idx}
-                                onClick={() => setTutorExistente(usuarioPadre.id_tutor)}
-                              >
-                                <CardBody>
-                                  <div className="mb-2 font-semibold">Padre encontrado:</div>
-                                  <div>
-                                    <b>Nombre:</b> {usuarioPadre.nombre} {usuarioPadre.apellido}
-                                  </div>
-                                  <div>
-                                    <b>Cédula:</b> {usuarioPadre.identificacion}
-                                  </div>
-                                  {tutorExistente === usuarioPadre.id_tutor && (
-                                    <div className="text-success-600 font-bold mt-1">
-                                      Seleccionado
-                                    </div>
-                                  )}
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    color={
-                                      tutorExistente === usuarioPadre.id_tutor ? "success" : "primary"
-                                    }
-                                    variant={yaEsTutor ? "flat" : "solid"}
-                                    className="ml-2 mt-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setTutorExistente(usuarioPadre.id_tutor);
-                                      if (!yaEsTutor) {
-                                        onTutorAdd({
-                                          id_tutor: usuarioPadre.id_tutor,
-                                          nombre: usuarioPadre.nombre,
-                                          apellido: usuarioPadre.apellido,
-                                          identificacion: usuarioPadre.identificacion,
-                                          telefono: usuarioPadre.telefono || "",
-                                          direccion: usuarioPadre.direccion || "",
-                                          correo: usuarioPadre.correo || "",
-                                        });
-                                      }
-                                    }}
-                                  >
-                                    {yaEsTutor
-                                      ? tutorExistente === usuarioPadre.id_tutor
-                                        ? "Seleccionado"
-                                        : "Seleccionar"
-                                      : "Seleccionar y agregar"}
-                                  </Button>
-                                </CardBody>
-                              </Card>
-                            );
-                          })}
-                      </div>
+                    {loadingTutors ? (
+                      <div>Cargando tutores...</div> // Loading indicator
                     ) : (
-                      <div className="text-danger-500">
-                        No se encontró un padre con esa cédula.
-                      </div>
+                      <>
+                        <input
+                          type="text"
+                          placeholder="Ingrese la cédula del tutor"
+                          className="input input-bordered w-full mb-2"
+                          value={busquedaCedula || ""}
+                          onChange={(e) => setBusquedaCedula(e.target.value)}
+                        />
+                        {tutoresFiltrados && tutoresFiltrados.length > 0 ? (
+                          <div className="space-y-2">
+                            {tutoresFiltrados.map((tutor, idx) => {
+                              const isSelected = tutorExistente === tutor.id_tutor;
+                              return (
+                                <Card
+                                  shadow={isSelected ? "md" : "xs"}
+                                  className={`mb-2 cursor-pointer ${isSelected ? "border-2 border-success-500" : ""}`}
+                                  key={tutor.id_tutor + "_" + idx}
+                                  onClick={() => setTutorExistente(tutor.id_tutor)}
+                                >
+                                  <CardBody>
+                                    <div className="mb-2 font-semibold">Tutor encontrado:</div>
+                                    <div><b>Nombre:</b> {tutor.nombre}</div>
+                                    <div><b>Cédula:</b> {tutor.identificacion}</div>
+                                    {isSelected && <div className="text-success-600 font-bold mt-1">Seleccionado</div>}
+                                  </CardBody>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div>No se encontraron tutores.</div> // No results message
+                        )}
+                      </>
                     )}
                   </div>
-                ) : (
+                )}
+                {!usarTutorExistente && (
                   <PadreForm formData={padreData} handleChange={handlePadreChange} />
                 )}
               </CardBody>
             </Card>
           </div>
+        ) : (
+          <div className="space-y-4">
+            <h4 className="text-xl font-semibold">
+              {isEditMode ? "Editar Información del Paciente" : "Información del Paciente"}
+            </h4>
+            <NinoForm
+              formData={formData}
+              handleChange={handleChange}
+              centros={centros}
+            />
+          </div>
         )}
         <Divider />
         <div className="flex justify-between">
           {paso === 2 && (
-            <Button variant="flat" color="default" onClick={handleBack}>
+            <Button variant="flat" color="default" onClick={() => setPaso(1)}>
               Atrás
             </Button>
           )}
@@ -323,7 +286,7 @@ export default function RegistroForm({
                   e.preventDefault();
                   setPaso(2);
                 }}
-                isDisabled={loading}
+                isDisabled={loading || (usarTutorExistente && !tutorExistente)}
               >
                 Siguiente
               </Button>
@@ -331,7 +294,7 @@ export default function RegistroForm({
               <Button
                 type="submit"
                 color="primary"
-                isDisabled={loading || (usarTutorExistente && !tutorExistente)}
+                isDisabled={loading}
               >
                 {isEditMode ? "Guardar Cambios" : "Registrar"}
               </Button>

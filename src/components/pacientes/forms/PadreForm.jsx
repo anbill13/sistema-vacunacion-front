@@ -8,7 +8,7 @@ function PadreForm({ formData, handleChange }) {
         type="text"
         label="Nombre Completo"
         name="nombre_completo"
-        value={formData.nombre_completo}
+        value={formData.nombre_completo || ""}
         onChange={handleChange}
         placeholder="Ingrese el nombre completo del tutor"
         isRequired
@@ -22,7 +22,7 @@ function PadreForm({ formData, handleChange }) {
         type="text"
         label="Identificación"
         name="identificacion"
-        value={formData.identificacion}
+        value={formData.identificacion || ""}
         onChange={handleChange}
         placeholder="Número de identificación"
         isRequired
@@ -36,7 +36,7 @@ function PadreForm({ formData, handleChange }) {
         type="tel"
         label="Teléfono"
         name="telefono"
-        value={formData.telefono}
+        value={formData.telefono || ""}
         onChange={handleChange}
         placeholder="Número de teléfono"
         isRequired
@@ -50,7 +50,7 @@ function PadreForm({ formData, handleChange }) {
         type="email"
         label="Correo Electrónico"
         name="correo_electronico"
-        value={formData.correo_electronico}
+        value={formData.correo_electronico || ""}
         onChange={handleChange}
         placeholder="Dirección de correo electrónico"
         variant="bordered"
@@ -63,7 +63,7 @@ function PadreForm({ formData, handleChange }) {
         type="text"
         label="Dirección"
         name="direccion"
-        value={formData.direccion}
+        value={formData.direccion || ""}
         onChange={handleChange}
         placeholder="Dirección completa"
         isRequired
@@ -89,9 +89,9 @@ function PadreForm({ formData, handleChange }) {
       >
         <SelectItem key="Padre" value="Padre">Padre</SelectItem>
         <SelectItem key="Madre" value="Madre">Madre</SelectItem>
+        <SelectItem key="Tutor Legal" value="Tutor Legal">Tutor Legal</SelectItem>
         <SelectItem key="Abuelo/a" value="Abuelo/a">Abuelo/a</SelectItem>
         <SelectItem key="Tío/a" value="Tío/a">Tío/a</SelectItem>
-        <SelectItem key="Tutor Legal" value="Tutor Legal">Tutor Legal</SelectItem>
         <SelectItem key="Otro" value="Otro">Otro</SelectItem>
       </Select>
     </div>
