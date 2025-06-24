@@ -3,6 +3,7 @@ import {
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Button, Select, SelectItem, Textarea, Table, TableHeader, TableBody, TableColumn, TableRow, TableCell, DatePicker, TimeInput
 } from "@nextui-org/react";
+import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
 import RegistrarVacunacionModal from '../vacunacion/RegistrarVacunacionModal';
 import { getEsquemaVacunacion } from '../../services/esquemaService';
 
@@ -18,6 +19,7 @@ export default function VacunacionModal({
   onRegistrarCita,
   onEditarCita,
   onEliminarCita,
+  onRefreshHistorial, // Nueva prop para refrescar historial
   loading
 }) {
   // const [vacunaId, setVacunaId] = useState("");
@@ -51,23 +53,56 @@ export default function VacunacionModal({
   }, [open]);
 
   const handleEditCita = (cita) => {
-    setEditCitaId(cita.id);
+    setEditCitaId(cita.id || cita.id_cita);
     setEditCitaData({ ...cita });
-    setCitaFecha(new Date(cita.fecha));
-    setCitaHora(cita.hora);
-    setCitaVacunaId(cita.vacunaId);
-    setCitaNotas(cita.notas || "");
+    
+    // Convertir la fecha al formato correcto para DatePicker
+    try {
+      const fechaCita = cita.fecha || cita.fecha_cita;
+      if (fechaCita) {
+        // Si la fecha es un string, convertir a Date y luego al formato correcto
+        const fechaDate = new Date(fechaCita);
+        const year = fechaDate.getFullYear();
+        const month = String(fechaDate.getMonth() + 1).padStart(2, '0');
+        const day = String(fechaDate.getDate()).padStart(2, '0');
+        const fechaString = `${year}-${month}-${day}`;
+        setCitaFecha(parseDate(fechaString));
+      } else {
+        setCitaFecha(today(getLocalTimeZone()));
+      }
+    } catch (error) {
+      console.error('Error parsing date:', error);
+      setCitaFecha(today(getLocalTimeZone()));
+    }
+    
+    setCitaHora(cita.hora || null);
+    setCitaVacunaId(cita.vacunaId || cita.id_vacuna || "");
+    setCitaNotas(cita.notas || cita.observaciones || "");
   };
 
   const handleSaveEditCita = () => {
     if (!editCitaId) return;
+    
+    // Convertir la fecha al formato correcto para el backend
+    let fechaFormateada = null;
+    if (citaFecha) {
+      try {
+        fechaFormateada = `${citaFecha.year}-${String(citaFecha.month).padStart(2, '0')}-${String(citaFecha.day).padStart(2, '0')}`;
+      } catch (error) {
+        console.error('Error formatting date:', error);
+        fechaFormateada = new Date().toISOString().split('T')[0];
+      }
+    }
+    
     onEditarCita(editCitaId, {
       ...editCitaData,
-      fecha: citaFecha,
+      fecha: fechaFormateada,
       hora: citaHora,
       vacunaId: citaVacunaId,
       notas: citaNotas,
     });
+    
+    // Limpiar el estado
     setEditCitaId(null);
     setEditCitaData(null);
     setCitaFecha(null);
@@ -89,7 +124,7 @@ export default function VacunacionModal({
       <Modal isOpen={open} onClose={onClose} size="2xl" scrollBehavior="inside" backdrop="blur">
         <ModalContent>
           <ModalHeader>
-            Registrar Vacunación y Próxima Cita
+            Registrar Vacunación y Próxima Cita - {paciente?.nombre_completo}
           </ModalHeader>
           <ModalBody>
             {/* Próxima cita destacada */}
@@ -115,10 +150,10 @@ export default function VacunacionModal({
                   <TableBody>
                     {historialVacunas.slice(-5).reverse().map((dosis, idx) => (
                       <TableRow key={idx}>
-                        <TableCell>{dosis.nombre_vacuna}</TableCell>
-                        <TableCell>{dosis.fecha_aplicacion ? new Date(dosis.fecha_aplicacion).toLocaleString() : ""}</TableCell>
+                        <TableCell>{dosis.nombre_vacuna || 'Vacuna no especificada'}</TableCell>
+                        <TableCell>{dosis.fecha_aplicacion || 'Fecha no disponible'}</TableCell>
                         <TableCell>{dosis.numero_lote || "N/A"}</TableCell>
-                        <TableCell>{dosis.notas || ""}</TableCell>
+                        <TableCell>{dosis.observaciones || dosis.notas || ""}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -133,20 +168,20 @@ export default function VacunacionModal({
               {citas.length > 0 ? (
                 <Table aria-label="Citas futuras" isStriped removeWrapper>
                   <TableHeader>
-                    <TableColumn>Vacuna</TableColumn>
+                    <TableColumn>Tipo</TableColumn>
                     <TableColumn>Fecha</TableColumn>
-                    <TableColumn>Notas</TableColumn>
+                    <TableColumn>Estado</TableColumn>
                     <TableColumn>Acciones</TableColumn>
                   </TableHeader>
                   <TableBody>
                     {citas.map((cita, idx) => (
-                      <TableRow key={cita.id || idx}>
-                        <TableCell>{vacunas.find(v => v.id_vacuna === cita.vacunaId)?.nombre_vacuna || ""}</TableCell>
-                        <TableCell>{cita.fecha ? new Date(cita.fecha).toLocaleString() : ""}</TableCell>
-                        <TableCell>{cita.notas || ""}</TableCell>
+                      <TableRow key={cita.id || cita.id_cita || idx}>
+                        <TableCell>{cita.vacuna_nombre || 'Cita general'}</TableCell>
+                        <TableCell>{cita.fecha || (cita.fecha_cita ? new Date(cita.fecha_cita).toLocaleDateString('es-ES') : 'Fecha no disponible')}</TableCell>
+                        <TableCell>{cita.estado || 'Pendiente'}</TableCell>
                         <TableCell>
                           <Button size="sm" color="primary" variant="flat" onClick={() => handleEditCita(cita)} className="mr-1">Editar</Button>
-                          <Button size="sm" color="danger" variant="flat" onClick={() => onEliminarCita(cita.id)}>Cancelar</Button>
+                          <Button size="sm" color="danger" variant="flat" onClick={() => onEliminarCita(cita.id || cita.id_cita)}>Cancelar</Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -177,10 +212,13 @@ export default function VacunacionModal({
                 </div>
                 <Select
                   label="Vacuna a aplicar"
-                  value={citaVacunaId}
-                  onChange={e => setCitaVacunaId(e.target.value)}
+                  selectedKeys={citaVacunaId ? [citaVacunaId] : []}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0];
+                    setCitaVacunaId(selected || "");
+                  }}
                   className="mb-2"
-                  required
+                  isRequired
                 >
                   {vacunas.map(v => (
                     <SelectItem key={v.id_vacuna} value={v.id_vacuna}>{v.nombre_vacuna}</SelectItem>
@@ -192,8 +230,28 @@ export default function VacunacionModal({
                   onChange={e => setCitaNotas(e.target.value)}
                   className="mb-2"
                 />
-                <Button color="primary" onClick={handleSaveEditCita} isDisabled={!citaFecha || !citaHora || !citaVacunaId || loading} className="mr-2">Guardar Cambios</Button>
-                <Button color="default" variant="flat" onClick={() => setEditCitaId(null)}>Cancelar</Button>
+                <Button 
+                  color="primary" 
+                  onClick={handleSaveEditCita} 
+                  isDisabled={!citaFecha || !citaVacunaId || loading} 
+                  className="mr-2"
+                >
+                  Guardar Cambios
+                </Button>
+                <Button 
+                  color="default" 
+                  variant="flat" 
+                  onClick={() => {
+                    setEditCitaId(null);
+                    setEditCitaData(null);
+                    setCitaFecha(null);
+                    setCitaHora(null);
+                    setCitaVacunaId("");
+                    setCitaNotas("");
+                  }}
+                >
+                  Cancelar
+                </Button>
               </div>
             )}
 
@@ -211,10 +269,25 @@ export default function VacunacionModal({
         onClose={() => setShowRegistrar(false)}
         paciente={paciente}
         esquema={esquema}
-        onVacunacionRegistrada={() => {
+        vacunas={vacunas}
+        lotesVacunas={lotesVacunas}
+        onVacunacionRegistrada={async () => {
           // Callback cuando se registra la vacunación exitosamente
-          // Podrías actualizar el estado aquí si necesitas refrescar datos
           setShowRegistrar(false);
+          
+          // Refrescar el historial de vacunación si la función está disponible
+          if (onRefreshHistorial && paciente) {
+            const pacienteId = paciente.id_niño || paciente.id_paciente;
+            if (pacienteId) {
+              try {
+                console.log(`[VacunacionModal] Refrescando historial para paciente ${pacienteId}`);
+                await onRefreshHistorial(pacienteId);
+                console.log(`[VacunacionModal] Historial actualizado para paciente ${pacienteId}`);
+              } catch (error) {
+                console.error('[VacunacionModal] Error actualizando historial:', error);
+              }
+            }
+          }
         }}
       />
     </>

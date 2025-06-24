@@ -1,7 +1,7 @@
 import React from 'react';
 import { Input, Select, SelectItem } from "@nextui-org/react";
 
-function NinoForm({ formData, handleChange, centros }) {
+function NinoForm({ formData, handleChange, handleSelectChange, centros }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Input
@@ -35,7 +35,7 @@ function NinoForm({ formData, handleChange, centros }) {
         label="Género"
         name="genero"
         selectedKeys={formData.genero ? [formData.genero] : []}
-        onChange={handleChange}
+        onSelectionChange={(keys) => handleSelectChange("genero", keys)}
         isRequired
         variant="bordered"
         placeholder="Seleccione género"
@@ -43,9 +43,9 @@ function NinoForm({ formData, handleChange, centros }) {
           <span className="text-default-400 text-small">⚥</span>
         }
       >
-        <SelectItem key="Masculino" value="M">Masculino</SelectItem>
-        <SelectItem key="Femenino" value="F">Femenino</SelectItem>
-        <SelectItem key="Otro" value="O">Otro</SelectItem>
+        <SelectItem key="M" value="M">Masculino</SelectItem>
+        <SelectItem key="F" value="F">Femenino</SelectItem>
+        <SelectItem key="O" value="O">Otro</SelectItem>
       </Select>
       
       <Input
@@ -108,7 +108,7 @@ function NinoForm({ formData, handleChange, centros }) {
         label="Centro de Salud"
         name="id_centro_salud"
         selectedKeys={formData.id_centro_salud ? [formData.id_centro_salud] : []}
-        onChange={handleChange}
+        onSelectionChange={(keys) => handleSelectChange("id_centro_salud", keys)}
         isRequired
         variant="bordered"
         placeholder="Seleccione un centro"
@@ -133,6 +133,20 @@ function NinoForm({ formData, handleChange, centros }) {
         variant="bordered"
         startContent={
           <span className="text-default-400 text-small">📞</span>
+        }
+      />
+      
+      <Input
+        type="text"
+        label="ID Salud Nacional"
+        name="id_salud_nacional"
+        value={formData.id_salud_nacional || ""}
+        onChange={handleChange}
+        placeholder="Número de identificación del sistema de salud (si aplica)"
+        variant="bordered"
+        className="md:col-span-2"
+        startContent={
+          <span className="text-default-400 text-small">🏥</span>
         }
       />
     </div>

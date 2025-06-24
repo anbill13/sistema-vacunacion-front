@@ -23,6 +23,7 @@ import PublicPage from "./components/public/PublicPage";
 import AuthPage from "./components/auth/AuthPage";
 import AdminPage from "./components/admin/AdminPage";
 import DoctorPage from "./components/doctores/DoctorPage";
+import MisHijos from "./components/padres/MisHijos";
 import { Modal } from "./components/ui/Modal";
 
 class ErrorBoundary extends Component {
@@ -102,7 +103,7 @@ function AppContent({ activeTab, setActiveTab }) {
                 {activeTab === "doctor" && <DoctorPage />}
                 {activeTab === "mis-hijos" && (
                   <Suspense fallback={<div>Cargando...</div>}>
-                    {require("./components/padres/MisHijos").default()}
+                    <MisHijos />
                   </Suspense>
                 )}
               </div>

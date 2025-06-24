@@ -22,13 +22,72 @@ import {
   Chip,
 } from "@nextui-org/react";
 import RegistroForm from './forms/RegistroForm';
-import CitaModal from './CitaModal';
 import * as pacientesService from '../../services/pacientesService'; // Único servicio usado
+import centrosService from '../../services/centrosService'; // Importar el servicio de centros
+import { getEsquemaVacunacion } from '../../services/esquemaService'; // Importar el servicio de esquema
+
+// Utilidades para calcular próximas vacunaciones
+function edadRecomendadaAMeses(edad) {
+  if (!edad) return 0;
+  if (edad.includes('mes')) return parseInt(edad);
+  if (edad.includes('año')) {
+    const [min] = edad.split('-').map(e => parseInt(e));
+    return min ? min * 12 : parseInt(edad) * 12;
+  }
+  if (edad === 'Al nacer') return 0;
+  return 0;
+}
+
+function getEdadEnMeses(fechaNacimiento) {
+  if (!fechaNacimiento) return 0;
+  const hoy = new Date();
+  const nacimiento = new Date(fechaNacimiento);
+  return (hoy.getFullYear() - nacimiento.getFullYear()) * 12 + (hoy.getMonth() - nacimiento.getMonth());
+}
+
+function calcularProximaVacunacion(fechaNacimiento, historialVacunas = [], esquemaVacunacion = []) {
+  if (!fechaNacimiento || !Array.isArray(esquemaVacunacion)) {
+    return null;
+  }
+
+  const edadMeses = getEdadEnMeses(fechaNacimiento);
+  
+  // Obtener vacunas ya aplicadas
+  const vacunasAplicadas = historialVacunas.map(h => h.nombre_vacuna || h.descripcion).filter(Boolean);
+  
+  // Encontrar próximas vacunas pendientes
+  const proximasVacunas = esquemaVacunacion
+    .filter(vac => {
+      const edadRecomendada = edadRecomendadaAMeses(vac.edad_recomendada);
+      const yaAplicada = vacunasAplicadas.includes(vac.descripcion || vac.nombre_vacuna);
+      return edadRecomendada >= edadMeses && !yaAplicada;
+    })
+    .sort((a, b) => edadRecomendadaAMeses(a.edad_recomendada) - edadRecomendadaAMeses(b.edad_recomendada));
+
+  if (proximasVacunas.length > 0) {
+    const proxima = proximasVacunas[0];
+    const edadRecomendada = edadRecomendadaAMeses(proxima.edad_recomendada);
+    const mesesFaltantes = Math.max(0, edadRecomendada - edadMeses);
+    
+    const fechaEstimada = new Date();
+    fechaEstimada.setMonth(fechaEstimada.getMonth() + mesesFaltantes);
+    
+    return {
+      vacuna: proxima.descripcion || proxima.nombre_vacuna,
+      edadRecomendada: proxima.edad_recomendada,
+      fechaEstimada: fechaEstimada.toLocaleDateString('es-ES'),
+      mesesFaltantes
+    };
+  }
+
+  return null;
+}
 
 export default function GestionPacientes() {
   const { currentUser } = useAuth();
   const [ninos, setNinos] = useState([]);
   const [tutores, setTutores] = useState([]); // Temporal hasta integrar usuariosService si es necesario
+  const [centros, setCentros] = useState([]); // Estado para los centros
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -45,12 +104,9 @@ export default function GestionPacientes() {
   // Estados para VacunacionModal
   const [vacunacionModalOpen, setVacunacionModalOpen] = useState(false);
   const [pacienteVacunacion, setPacienteVacunacion] = useState(null);
-  const [loadingVacunacion, setLoadingVacunacion] = useState(false);
   const [citasPaciente, setCitasPaciente] = useState([]);
 
-  const [citaModalOpen, setCitaModalOpen] = useState(false);
-
-  // Cargar pacientes y tutores al montar
+  // Cargar pacientes, tutores y centros al montar
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -67,6 +123,11 @@ export default function GestionPacientes() {
         setNinos(ninosConIdNino);
         console.log('[GestionPacientes] Niños loaded:', ninosConIdNino);
 
+        // Cargar todos los centros de salud
+        const fetchedCentros = await centrosService.getCentros();
+        setCentros(fetchedCentros);
+        console.log('[GestionPacientes] Centros loaded:', fetchedCentros);
+
         // Nota: Si necesitas tutores, deberías integrarlo desde usuariosService o una fuente similar
         // Por ahora, dejamos setTutores([]) como placeholder
         setTutores([]);
@@ -78,7 +139,7 @@ export default function GestionPacientes() {
       }
     };
     loadData();
-  }, []);
+  }, [currentUser]);
 
   // Filtrado por centro: solo el doctor ve pacientes de sus centros asignados
   const getCentrosDoctor = () => {
@@ -165,26 +226,20 @@ export default function GestionPacientes() {
   };
 
   const handleOpenVacunacionModal = async (nino) => {
-    console.log('Abriendo modal de vacunación para:', nino);
     setPacienteVacunacion(nino);
-    // Verificar que tenemos un ID válido (id_niño o id_paciente)
     const idPaciente = nino?.id_niño || nino?.id_paciente;
-    console.log('ID del paciente para citas:', idPaciente);
+    
     if (!nino || !idPaciente) {
       setCitasPaciente([]);
       setVacunacionModalOpen(true);
       alert('No se puede cargar citas: paciente o ID de niño inválido.');
       return;
     }
+    
     try {
-      // Cargar citas y historial en paralelo
-      const [citas, historial] = await Promise.all([
-        pacientesService.getCitasVacunas(idPaciente),
-        cargarHistorialVacunacion(idPaciente)
-      ]);
+      const citas = await pacientesService.getCitasVacunas(idPaciente);
+      await cargarHistorialVacunacion(idPaciente);
       
-      console.log('Citas obtenidas:', citas);
-      console.log('Historial obtenido:', historial);
       setCitasPaciente(citas || []);
     } catch (e) {
       setCitasPaciente([]);
@@ -199,15 +254,44 @@ export default function GestionPacientes() {
     return tutor ? `${tutor.nombre} ${tutor.apellido}` : "No especificado";
   };
 
-  // Estado para historial de vacunación
+  // Estados para datos de vacunas y lotes
+  const [vacunas, setVacunas] = useState([]);
+  const [lotesVacunas, setLotesVacunas] = useState([]);
+
+  // Estado para esquema de vacunación
+  const [esquemaVacunacion, setEsquemaVacunacion] = useState([]);
+
+  // Cargar vacunas y lotes al inicio
+  useEffect(() => {
+    const cargarDatosVacunacion = async () => {
+      try {
+        const [vacunasData, lotesData, esquemaData] = await Promise.all([
+          pacientesService.getVacunas(),
+          pacientesService.getLotesVacunas(),
+          getEsquemaVacunacion()
+        ]);
+        
+        setVacunas(vacunasData || []);
+        setLotesVacunas(lotesData || []);
+        setEsquemaVacunacion(esquemaData || []);
+      } catch (error) {
+        console.error('[GestionPacientes] Error cargando datos de vacunación:', error);
+        setVacunas([]);
+        setLotesVacunas([]);
+        setEsquemaVacunacion([]);
+      }
+    };
+
+    cargarDatosVacunacion();
+  }, []);
+
+  // Estados para historial de vacunación
   const [historialVacunacion, setHistorialVacunacion] = useState({});
 
   const getHistorialVacunas = (ninoId) => {
-    // Retornar historial cacheado o array vacío
     return historialVacunacion[ninoId] || [];
   };
 
-  // Función para cargar historial de vacunación
   const cargarHistorialVacunacion = async (ninoId) => {
     try {
       const historial = await pacientesService.getHistorialVacunacion(ninoId);
@@ -217,7 +301,17 @@ export default function GestionPacientes() {
       }));
       return historial;
     } catch (error) {
-      console.error('Error cargando historial de vacunación:', error);
+      console.error('[GestionPacientes] Error cargando historial de vacunación:', error);
+      
+      if (error.message && error.message.includes('id_personal')) {
+        console.warn('[GestionPacientes] Error conocido del backend: usar id_usuario en lugar de id_personal');
+        setHistorialVacunacion(prev => ({
+          ...prev,
+          [ninoId]: []
+        }));
+        return [];
+      }
+      
       return [];
     }
   };
@@ -225,6 +319,11 @@ export default function GestionPacientes() {
   const getCentroNombre = (idCentro) => {
     // Nota: Esto requiere centrosVacunacion, que no se carga aquí. Podrías necesitar integrarlo.
     return "No especificado"; // Placeholder; ajusta según tu lógica
+  };
+
+  const getProximaVacunacion = (nino) => {
+    const historial = getHistorialVacunas(nino.id_niño);
+    return calcularProximaVacunacion(nino.fecha_nacimiento, historial, esquemaVacunacion);
   };
 
   // Función auxiliar para obtener el ID correcto del paciente
@@ -309,7 +408,36 @@ export default function GestionPacientes() {
           {mostrarPacientes.map((nino) => (
             <Card key={nino.id_niño} shadow="sm">
               <CardHeader className="flex justify-between items-center bg-primary-50 dark:bg-primary-900/20">
-                <h5 className="text-lg font-semibold">{nino.nombre_completo}</h5>
+                <div className="flex items-center gap-3">
+                  <h5 className="text-lg font-semibold">{nino.nombre_completo}</h5>
+                  {(() => {
+                    const proximaVacuna = getProximaVacunacion(nino);
+                    if (proximaVacuna?.mesesFaltantes === 0) {
+                      return (
+                        <Chip 
+                          color="warning" 
+                          variant="flat" 
+                          size="sm"
+                          startContent={<span>⚠️</span>}
+                        >
+                          Vacuna pendiente
+                        </Chip>
+                      );
+                    } else if (proximaVacuna?.mesesFaltantes > 0 && proximaVacuna?.mesesFaltantes <= 1) {
+                      return (
+                        <Chip 
+                          color="primary" 
+                          variant="flat" 
+                          size="sm"
+                          startContent={<span>📅</span>}
+                        >
+                          Próxima vacuna pronto
+                        </Chip>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -326,14 +454,9 @@ export default function GestionPacientes() {
                     Editar
                   </Button>
                   {currentUser && ['doctor', 'administrador', 'director'].includes(currentUser.role) && (
-                    <>
-                      <Button size="sm" color="success" variant="flat" onClick={async () => await handleOpenVacunacionModal(nino)}>
-                        Registrar Vacunación
-                      </Button>
-                      <Button size="sm" color="secondary" variant="flat" onClick={() => { setPacienteVacunacion(nino); setCitaModalOpen(true); }}>
-                        Registrar Próxima Cita
-                      </Button>
-                    </>
+                    <Button size="sm" color="success" variant="flat" onClick={async () => await handleOpenVacunacionModal(nino)}>
+                      Registrar Vacunación
+                    </Button>
                   )}
                 </div>
               </CardHeader>
@@ -351,10 +474,48 @@ export default function GestionPacientes() {
                         <p><span className="font-semibold">Tutor:</span> {getTutorNombre(nino.id_tutor)}</p>
                         <p><span className="font-semibold">Centro de Salud:</span> {getCentroNombre(nino.id_centro_salud)}</p>
                       </div>
+                      
+                      {/* Información de próxima vacunación */}
+                      <div className="mt-4">
+                        <h6 className="text-md font-semibold mb-2">Próxima Vacunación</h6>
+                        {(() => {
+                          const proximaVacuna = getProximaVacunacion(nino);
+                          if (proximaVacuna) {
+                            return (
+                              <div className="p-3 rounded-lg bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-700">
+                                <div className="space-y-1">
+                                  <p><span className="font-semibold text-success-800 dark:text-success-200">Vacuna:</span> {proximaVacuna.vacuna}</p>
+                                  <p><span className="font-semibold text-success-800 dark:text-success-200">Edad recomendada:</span> {proximaVacuna.edadRecomendada}</p>
+                                  <p><span className="font-semibold text-success-800 dark:text-success-200">Fecha estimada:</span> {proximaVacuna.fechaEstimada}</p>
+                                  {proximaVacuna.mesesFaltantes > 0 && (
+                                    <p className="text-sm text-success-700 dark:text-success-300">
+                                      Faltan aproximadamente {proximaVacuna.mesesFaltantes} mes{proximaVacuna.mesesFaltantes !== 1 ? 'es' : ''}
+                                    </p>
+                                  )}
+                                  {proximaVacuna.mesesFaltantes === 0 && (
+                                    <p className="text-sm font-semibold text-warning-700 dark:text-warning-300">
+                                      ⚠️ Vacuna pendiente - Edad recomendada alcanzada
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="p-3 rounded-lg bg-default-100 dark:bg-default-800/50 border border-default-200 dark:border-default-700">
+                                <p className="text-default-600 dark:text-default-400">
+                                  ✅ Esquema de vacunación al día o información no disponible
+                                </p>
+                              </div>
+                            );
+                          }
+                        })()}
+                      </div>
+                      
                       {/* Las citas se mostrarán cuando se abra el modal de vacunación */}
                       <div className="mt-4 p-3 rounded-lg bg-info-100 dark:bg-info-900/40 border border-info-300 dark:border-info-700">
                         <span className="font-semibold text-info-800 dark:text-info-200">
-                          Haz clic en "Registrar Vacuna" para ver el historial y próximas citas
+                          Haz clic en "Registrar Vacunación" para ver el historial y próximas citas
                         </span>
                       </div>
                     </div>
@@ -425,7 +586,7 @@ export default function GestionPacientes() {
               onUpdateNino={handleUpdateNino}
               onUpdateTutor={handleUpdateTutor}
               tutores={tutores || []}
-              centros={[]} // Placeholder; integra centros si es necesario
+              centros={centros || []} // Pasar centros al formulario
             />
           </ModalBody>
         </ModalContent>
@@ -433,31 +594,57 @@ export default function GestionPacientes() {
 
       <VacunacionModal
         open={vacunacionModalOpen}
-        onClose={() => setVacunacionModalOpen(false)}
+        onClose={() => {
+          setVacunacionModalOpen(false);
+          if (pacienteVacunacion) {
+            const idPaciente = getPacienteId(pacienteVacunacion);
+            cargarHistorialVacunacion(idPaciente).catch(error => {
+              console.error('[GestionPacientes] Error actualizando historial al cerrar modal:', error);
+            });
+          }
+        }}
         paciente={pacienteVacunacion}
-        lotesVacunas={[]} // Placeholder; integra lotesVacunas si es necesario
-        vacunas={[]} // Placeholder; integra vacunas si es necesario
+        lotesVacunas={lotesVacunas}
+        vacunas={vacunas}
         historialVacunas={pacienteVacunacion ? getHistorialVacunas(getPacienteId(pacienteVacunacion)) : []}
         citas={citasPaciente}
+        onRefreshHistorial={async () => {
+          if (pacienteVacunacion) {
+            const idPaciente = getPacienteId(pacienteVacunacion);
+            await cargarHistorialVacunacion(idPaciente);
+          }
+        }}
         onRegistrarVacuna={async (data) => {
-          setLoadingVacunacion(true);
           try {
             if (!data.id_vacuna || !data.id_lote) {
               alert('Debes seleccionar vacuna y lote.');
-              setLoadingVacunacion(false);
               return;
             }
-            // Nota: Aquí deberías enviar los datos de la nueva dosis a tu servicio/backend.
-            // Por ejemplo: await pacientesService.registrarVacunacion(pacienteVacunacion.id_niño, { ...data, fecha_aplicacion: new Date().toISOString() });
-            setLoadingVacunacion(false);
+            
+            if (pacienteVacunacion) {
+              const idPaciente = getPacienteId(pacienteVacunacion);
+              
+              await pacientesService.registrarVacunacion({
+                ...data,
+                id_paciente: idPaciente,
+                fecha_aplicacion: new Date().toISOString()
+              });
+              
+              // Esperar un momento antes de recargar para dar tiempo al backend
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Refrescar el historial de vacunación
+              await cargarHistorialVacunacion(idPaciente);
+              
+              // Mostrar mensaje de éxito
+              alert('Vacunación registrada exitosamente. El historial se ha actualizado.');
+            }
           } catch (e) {
-            alert('Error al registrar la vacunación');
-            console.error('Error al registrar vacuna:', e);
-            setLoadingVacunacion(false);
+            console.error('[GestionPacientes] Error al registrar vacuna:', e);
+            alert('Error al registrar la vacunación: ' + e.message);
           }
         }}
         onRegistrarCita={async (cita) => {
-          setLoadingVacunacion(true);
           try {
             if (pacienteVacunacion) {
               const idPaciente = getPacienteId(pacienteVacunacion);
@@ -465,37 +652,11 @@ export default function GestionPacientes() {
               const citasActualizadas = await pacientesService.getCitasVacunas(idPaciente);
               setCitasPaciente(citasActualizadas || []);
             }
-            setCitaModalOpen(false);
           } catch (e) {
             console.error('Error al registrar cita:', e);
           }
-          setLoadingVacunacion(false);
-        }}
-      />
-
-      <CitaModal
-        open={citaModalOpen}
-        onClose={() => setCitaModalOpen(false)}
-        paciente={pacienteVacunacion}
-        vacunas={[]} // Placeholder; integra vacunas si es necesario
-        loading={loadingVacunacion}
-        onRegistrarCita={async (cita) => {
-          setLoadingVacunacion(true);
-          try {
-            if (pacienteVacunacion) {
-              const idPaciente = getPacienteId(pacienteVacunacion);
-              await pacientesService.agregarCitaVacuna(idPaciente, cita);
-              const citasActualizadas = await pacientesService.getCitasVacunas(idPaciente);
-              setCitasPaciente(citasActualizadas || []);
-            }
-            setCitaModalOpen(false);
-          } catch (e) {
-            console.error('Error al registrar cita:', e);
-          }
-          setLoadingVacunacion(false);
         }}
         onEditarCita={async (citaId, datos) => {
-          setLoadingVacunacion(true);
           try {
             if (pacienteVacunacion) {
               const idPaciente = getPacienteId(pacienteVacunacion);
@@ -506,21 +667,23 @@ export default function GestionPacientes() {
           } catch (e) {
             console.error('Error al editar cita:', e);
           }
-          setLoadingVacunacion(false);
         }}
         onEliminarCita={async (citaId) => {
-          setLoadingVacunacion(true);
           try {
             if (pacienteVacunacion) {
               const idPaciente = getPacienteId(pacienteVacunacion);
+              
               await pacientesService.eliminarCitaVacuna(idPaciente, citaId);
+              
               const citasActualizadas = await pacientesService.getCitasVacunas(idPaciente);
               setCitasPaciente(citasActualizadas || []);
+              
+              alert('Cita eliminada exitosamente.');
             }
           } catch (e) {
-            console.error('Error al eliminar cita:', e);
+            console.error('[GestionPacientes] Error al eliminar cita:', e);
+            alert('Error al eliminar la cita: ' + e.message);
           }
-          setLoadingVacunacion(false);
         }}
       />
     </div>

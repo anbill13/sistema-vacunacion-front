@@ -420,7 +420,36 @@ const usuariosService = {
       console.error('[usuariosService] Error getting doctores por centro:', error);
       return [];
     }
-  }
+  },
+
+  // Obtener pacientes asociados a un usuario con rol "padre"
+  async getPatientsByUser(userId) {
+    try {
+      console.log(`[usuariosService] Fetching patients for user ID: ${userId}`);
+      
+      const response = await apiService.get(`/api/users/${userId}/patients`);
+      
+      if (!response) {
+        console.warn('[usuariosService] No response received');
+        return [];
+      }
+
+      // El backend puede devolver los datos directamente o en una propiedad específica
+      const patients = Array.isArray(response) ? response : (response.data || response.patients || []);
+      
+      console.log(`[usuariosService] Received ${patients.length} patients:`, patients);
+      
+      // Normalizar la estructura de datos de los pacientes
+      return patients.map(patient => ({
+        ...patient,
+        id_paciente: patient.id_paciente || patient.id,
+        nombre_completo: patient.nombre_completo || patient.nombre || `${patient.primer_nombre || ''} ${patient.segundo_nombre || ''} ${patient.primer_apellido || ''} ${patient.segundo_apellido || ''}`.trim()
+      }));
+    } catch (error) {
+      console.error(`[usuariosService] Error fetching patients for user ${userId}:`, error);
+      throw new Error(`Error al obtener los pacientes: ${error.message}`);
+    }
+  },
 };
 
 export default usuariosService;

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import NinoForm from "./NinoForm";
 import PadreForm from "./PadreForm";
-import { Button, Divider, Card, CardBody, Tabs, Tab } from "@nextui-org/react";
+import { Button, Divider, Card, CardBody, Tabs, Tab, Input } from "@nextui-org/react";
 import jsonService from "../../../services/jsonService";
+import * as pacientesService from "../../../services/pacientesService";
+import tutorsService from "../../../services/tutorsService";
 
 export default function RegistroForm({
   onClose,
@@ -28,7 +30,15 @@ export default function RegistroForm({
     pais_nacimiento: "",
     id_centro_salud: "",
     contacto_principal: "",
+    latitud: 0,
+    longitud: 0,
+    id_salud_nacional: "",
   });
+
+  // Log para monitorear cambios en formData
+  useEffect(() => {
+    console.log("[RegistroForm] formData actualizado:", formData);
+  }, [formData]);
   const [padreData, setPadreData] = useState({
     nombre_completo: "",
     identificacion: "",
@@ -43,6 +53,17 @@ export default function RegistroForm({
   const [tutoresFiltrados, setTutoresFiltrados] = useState([]); // Initialize as empty array
   const [error, setError] = useState("");
   const [tutores, setTutores] = useState(initialTutores); // Initialize with prop, default to empty array
+
+  // Log para monitorear cambios en tutorExistente
+  useEffect(() => {
+    console.log("[RegistroForm] tutorExistente actualizado:", tutorExistente);
+    console.log("[RegistroForm] Tipo de tutorExistente:", typeof tutorExistente);
+  }, [tutorExistente]);
+
+  // Log para monitorear cambios en usarTutorExistente
+  useEffect(() => {
+    console.log("[RegistroForm] usarTutorExistente actualizado:", usarTutorExistente);
+  }, [usarTutorExistente]);
 
   // Fetch tutors from /api/tutors when usarTutorExistente becomes true
   useEffect(() => {
@@ -93,6 +114,9 @@ export default function RegistroForm({
         pais_nacimiento: ninoToEdit.pais_nacimiento || "",
         id_centro_salud: ninoToEdit.id_centro_salud || "",
         contacto_principal: ninoToEdit.contacto_principal || "",
+        latitud: ninoToEdit.latitud || 0,
+        longitud: ninoToEdit.longitud || 0,
+        id_salud_nacional: ninoToEdit.id_salud_nacional || "",
       });
       if (ninoToEdit.id_tutor) {
         setUsarTutorExistente(true);
@@ -103,7 +127,14 @@ export default function RegistroForm({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    console.log("[RegistroForm] handleChange:", name, "=", value);
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSelectChange = (name, selectedKeys) => {
+    const selectedValue = Array.from(selectedKeys)[0] || "";
+    console.log("[RegistroForm] handleSelectChange:", name, "=", selectedValue);
+    setFormData({ ...formData, [name]: selectedValue });
   };
 
   const handlePadreChange = (e) => {
@@ -120,38 +151,98 @@ export default function RegistroForm({
       setPaso(2);
     } else {
       try {
-        const response = await jsonService.saveData("Ninos", {
-          nombre_completo: formData.nombre_completo,
-          identificacion: formData.identificacion,
-          nacionalidad: formData.nacionalidad,
-          pais_nacimiento: formData.pais_nacimiento,
-          fecha_nacimiento: formData.fecha_nacimiento,
-          genero: formData.genero,
-          direccion_residencia: formData.direccion_residencia,
-          id_centro_salud: formData.id_centro_salud,
-          contacto_principal: formData.contacto_principal,
-          tutores: !usarTutorExistente ? [{
-            nombre: padreData.nombre_completo,
-            relacion: padreData.relacion,
-            nacionalidad: formData.nacionalidad,
-            identificacion: padreData.identificacion,
-            telefono: padreData.telefono,
-            email: padreData.correo_electronico,
-            direccion: padreData.direccion,
-            tipo_relacion: "TutorLegal",
-          }] : [],
-          tutor_ids: usarTutorExistente ? [tutorExistente] : [],
-        }, isEditMode ? 'PUT' : 'POST');
-        const data = response.data || response;
-        if ((response.status && response.status === 201) || response.id_niño) {
-          if (!isEditMode) {
-            onNinoAdd({ ...formData, id_niño: data.id_paciente || data.id_niño, id_tutor: tutorExistente || data.tutores?.[0]?.id_tutor });
-          } else {
-            onUpdateNino({ ...formData, id_niño: ninoToEdit.id_niño, id_tutor: tutorExistente || data.tutores?.[0]?.id_tutor });
+        console.log("[RegistroForm] Estado completo de formData antes de enviar:", formData);
+        
+        // Obtener información del tutor seleccionado si se usa tutor existente
+        let tutorSeleccionado = null;
+        let tutorCreado = null;
+        
+        if (usarTutorExistente && tutorExistente) {
+          tutorSeleccionado = tutores.find(t => t.id_tutor === tutorExistente);
+          console.log("[RegistroForm] Tutor seleccionado encontrado:", tutorSeleccionado);
+        } else if (!usarTutorExistente) {
+          // Crear nuevo tutor con el formato específico requerido
+          console.log("[RegistroForm] === CREANDO NUEVO TUTOR ===");
+          const tutorData = {
+            id_niño: null,
+            nombre: padreData.nombre_completo?.trim() || null,
+            relacion: padreData.relacion?.trim() || "Madre",
+            nacionalidad: formData.nacionalidad?.trim() || null,
+            identificacion: padreData.identificacion?.trim() || null,
+            telefono: padreData.telefono?.trim() || null,
+            email: padreData.correo_electronico?.trim() || null,
+            direccion: padreData.direccion?.trim() || null
+          };
+          
+          console.log("[RegistroForm] Datos del tutor a crear:", JSON.stringify(tutorData, null, 2));
+          
+          try {
+            tutorCreado = await tutorsService.createTutor(tutorData);
+            console.log("[RegistroForm] ✅ Tutor creado exitosamente:", tutorCreado);
+          } catch (tutorError) {
+            console.error("[RegistroForm] ❌ Error creando tutor:", tutorError);
+            throw new Error(`Error al crear el tutor: ${tutorError.message}`);
           }
-          onClose();
+        }
+        
+        const dataToSave = {
+          nombre_completo: formData.nombre_completo?.trim() || null,
+          identificacion: formData.identificacion?.trim() || null,
+          nacionalidad: formData.nacionalidad?.trim() || null,
+          pais_nacimiento: formData.pais_nacimiento?.trim() || null,
+          fecha_nacimiento: formData.fecha_nacimiento?.trim() || null,
+          genero: formData.genero?.trim() || null,
+          direccion_residencia: formData.direccion_residencia?.trim() || null,
+          latitud: formData.latitud || 0,
+          longitud: formData.longitud || 0,
+          id_centro_salud: formData.id_centro_salud?.trim() || null,
+          contacto_principal: formData.contacto_principal?.trim() || null,
+          id_salud_nacional: formData.id_salud_nacional?.trim() || null,
+          tutor_ids: usarTutorExistente ? [tutorExistente] : tutorCreado ? [tutorCreado.id_tutor || tutorCreado.id] : [],
+        };
+
+        console.log("[RegistroForm] Datos que se enviarán al backend:", dataToSave);
+
+        let response;
+        if (isEditMode && ninoToEdit) {
+          // Usar pacientesService para actualización
+          const patientId = ninoToEdit.id_niño || ninoToEdit.id_paciente;
+          response = await pacientesService.updatePatient(patientId, dataToSave);
         } else {
-          throw new Error(data.message || "Error al crear paciente");
+          // Usar jsonService para creación
+          response = await jsonService.saveData("Ninos", dataToSave, 'POST');
+        }
+        
+        // Manejar diferentes tipos de respuesta
+        const data = response?.data || response;
+        
+        // Manejar respuesta exitosa
+        if (isEditMode) {
+          // Para edición, verificar si fue exitoso
+          if (response?.success || response?.status === 200 || data) {
+            onUpdateNino({ 
+              ...formData, 
+              id_niño: ninoToEdit.id_niño || ninoToEdit.id_paciente, 
+              id_paciente: ninoToEdit.id_niño || ninoToEdit.id_paciente,
+              id_tutor: tutorExistente || tutorCreado?.id_tutor || tutorCreado?.id || data?.tutores?.[0]?.id_tutor 
+            });
+            onClose();
+          } else {
+            throw new Error(data?.message || "Error al actualizar paciente");
+          }
+        } else {
+          // Para creación, verificar status code o ID
+          if ((response?.status && response.status === 201) || data?.id_niño || data?.id_paciente) {
+            onNinoAdd({ 
+              ...formData, 
+              id_niño: data.id_paciente || data.id_niño, 
+              id_paciente: data.id_paciente || data.id_niño,
+              id_tutor: tutorExistente || tutorCreado?.id_tutor || tutorCreado?.id || data?.tutores?.[0]?.id_tutor 
+            });
+            onClose();
+          } else {
+            throw new Error(data?.message || "Error al crear paciente");
+          }
         }
       } catch (err) {
         setError(err.message || "Error al procesar el registro. Intenta nuevamente.");
@@ -192,7 +283,7 @@ export default function RegistroForm({
               <span>Información del Paciente</span>
             </div>
           }
-          isDisabled={paso < 2 || !tutorExistente}
+          isDisabled={paso < 2 || (usarTutorExistente && !tutorExistente)}
         />
       </Tabs>
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -201,50 +292,110 @@ export default function RegistroForm({
             <h4 className="text-xl font-semibold">Información del Tutor</h4>
             <Card shadow="sm">
               <CardBody className="space-y-4">
-                <Button
-                  color={usarTutorExistente ? "primary" : "default"}
-                  variant="bordered"
-                  onClick={() => setUsarTutorExistente(true)} // Set to true on click
-                  className="mb-2"
-                >
-                  El tutor existe
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    color={usarTutorExistente ? "primary" : "default"}
+                    variant="bordered"
+                    onClick={() => setUsarTutorExistente(true)} // Set to true on click
+                  >
+                    Usar tutor existente
+                  </Button>
+                  <Button
+                    color={!usarTutorExistente ? "primary" : "default"}
+                    variant="bordered"
+                    onClick={() => {
+                      setUsarTutorExistente(false);
+                      setTutorExistente(""); // Clear existing tutor selection
+                    }}
+                  >
+                    Crear nuevo tutor
+                  </Button>
+                </div>
                 {usarTutorExistente && (
                   <div>
                     {loadingTutors ? (
-                      <div>Cargando tutores...</div> // Loading indicator
+                      <div className="text-center py-4">Cargando tutores...</div>
                     ) : (
                       <>
-                        <input
+                        <Input
                           type="text"
+                          label="Buscar tutor por cédula"
                           placeholder="Ingrese la cédula del tutor"
-                          className="input input-bordered w-full mb-2"
                           value={busquedaCedula || ""}
                           onChange={(e) => setBusquedaCedula(e.target.value)}
+                          variant="bordered"
+                          className="mb-4"
+                          startContent={
+                            <span className="text-default-400 text-small">🔍</span>
+                          }
                         />
                         {tutoresFiltrados && tutoresFiltrados.length > 0 ? (
-                          <div className="space-y-2">
+                          <div className="space-y-2 max-h-60 overflow-y-auto">
                             {tutoresFiltrados.map((tutor, idx) => {
+                              console.log(`[RegistroForm] Renderizando tutor ${tutor.nombre}: id=${tutor.id_tutor}`);
                               const isSelected = tutorExistente === tutor.id_tutor;
+                              console.log(`[RegistroForm] ¿Está seleccionado? ${isSelected} (${tutorExistente} === ${tutor.id_tutor})`);
                               return (
-                                <Card
-                                  shadow={isSelected ? "md" : "xs"}
-                                  className={`mb-2 cursor-pointer ${isSelected ? "border-2 border-success-500" : ""}`}
+                                <div
                                   key={tutor.id_tutor + "_" + idx}
-                                  onClick={() => setTutorExistente(tutor.id_tutor)}
+                                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
+                                    isSelected 
+                                      ? "border-success-500 bg-success-50 dark:bg-success-900/20" 
+                                      : "border-gray-200 hover:border-primary-200 bg-white dark:bg-gray-800"
+                                  }`}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log("[RegistroForm] Clic en tutor:", tutor.id_tutor, tutor.nombre);
+                                    setTutorExistente(tutor.id_tutor);
+                                  }}
                                 >
-                                  <CardBody>
-                                    <div className="mb-2 font-semibold">Tutor encontrado:</div>
-                                    <div><b>Nombre:</b> {tutor.nombre}</div>
-                                    <div><b>Cédula:</b> {tutor.identificacion}</div>
-                                    {isSelected && <div className="text-success-600 font-bold mt-1">Seleccionado</div>}
-                                  </CardBody>
-                                </Card>
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <div className="font-semibold text-lg">{tutor.nombre}</div>
+                                      <div className="text-small text-gray-600 dark:text-gray-400">
+                                        <span className="font-medium">Cédula:</span> {tutor.identificacion}
+                                      </div>
+                                      {tutor.telefono && (
+                                        <div className="text-small text-gray-600 dark:text-gray-400">
+                                          <span className="font-medium">Teléfono:</span> {tutor.telefono}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {isSelected && (
+                                      <div className="flex items-center gap-2 bg-success-100 text-success-800 px-2 py-1 rounded text-small font-medium">
+                                        <span>✓</span>
+                                        Seleccionado
+                                      </div>
+                                    )}
+                                    {!isSelected && (
+                                      <Button
+                                        size="sm"
+                                        color="primary"
+                                        variant="bordered"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          console.log("[RegistroForm] Botón seleccionar tutor:", tutor.id_tutor);
+                                          setTutorExistente(tutor.id_tutor);
+                                        }}
+                                      >
+                                        Seleccionar
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
                               );
                             })}
                           </div>
+                        ) : busquedaCedula?.trim() ? (
+                          <div className="text-center py-4 text-default-500">
+                            No se encontraron tutores con esa cédula.
+                          </div>
                         ) : (
-                          <div>No se encontraron tutores.</div> // No results message
+                          <div className="text-center py-4 text-default-500">
+                            Ingrese una cédula para buscar tutores.
+                          </div>
                         )}
                       </>
                     )}
@@ -264,6 +415,7 @@ export default function RegistroForm({
             <NinoForm
               formData={formData}
               handleChange={handleChange}
+              handleSelectChange={handleSelectChange}
               centros={centros}
             />
           </div>
@@ -302,6 +454,17 @@ export default function RegistroForm({
           </div>
         </div>
         {error && <div className="text-danger-500 mt-2">{error}</div>}
+        
+        {/* Debug info para desarrollo */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-small">
+            <div><strong>Debug Info:</strong></div>
+            <div>Usar tutor existente: {usarTutorExistente ? 'Sí' : 'No'}</div>
+            <div>Tutor seleccionado: {tutorExistente || 'Ninguno'}</div>
+            <div>Tutores cargados: {tutores.length}</div>
+            <div>Paso actual: {paso}</div>
+          </div>
+        )}
       </form>
     </div>
   );

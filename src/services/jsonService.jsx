@@ -7,7 +7,7 @@ const ENTITY_ENDPOINTS = {
   'Vacunas': '/api/vaccines',
   'Lotes_Vacunas': '/api/vaccine-lots',
   'Usuarios': '/api/users',
-  'Ninos': '/api/pacients',
+  'Ninos': '/api/patients', // Corregido: usar /api/patients
   'Padres': '/api/tutors',
   'Historial_Vacunacion': '/api/vaccination-history',
   'Citas': '/api/appointments',
@@ -106,6 +106,12 @@ const jsonService = {
     };
 
     const idField = idMappings[entityName];
+    
+    // Para entidad Ninos, intentar múltiples campos ID
+    if (entityName === 'Ninos') {
+      return data.id_nino || data.id_niño || data.id_paciente || data.id;
+    }
+    
     return data[idField] || data.id;
   },
 

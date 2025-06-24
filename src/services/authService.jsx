@@ -45,6 +45,74 @@ const authService = {
     }
   },
 
+  // Login específico para padres/tutores usando nombre y cédula
+  async loginPadre(nombre, cedula) {
+    try {
+      console.log('[authService] Intentando login de padre con:', { nombre, cedula });
+      
+      // Obtener datos de tutores desde el servidor
+      const tutores = await apiService.get('/api/tutors');
+      console.log('[authService] Tutores obtenidos:', tutores);
+      
+      if (Array.isArray(tutores)) {
+        // Buscar tutor que coincida con nombre y cédula
+        const tutor = tutores.find(t => 
+          t.nombre && t.identificacion &&
+          t.nombre.toLowerCase().trim() === nombre.toLowerCase().trim() && 
+          t.identificacion.trim() === cedula.trim()
+        );
+        
+        if (tutor) {
+          console.log('[authService] Tutor encontrado:', tutor);
+          
+          // Crear objeto de usuario padre
+          const user = {
+            id: tutor.id_tutor,
+            id_usuario: tutor.id_tutor,
+            id_tutor: tutor.id_tutor,
+            username: tutor.identificacion, // Usar cédula como username
+            nombre: tutor.nombre,
+            name: tutor.nombre,
+            role: 'padre',
+            rol: 'padre',
+            email: tutor.email,
+            telefono: tutor.telefono,
+            direccion: tutor.direccion,
+            relacion: tutor.relacion,
+            nacionalidad: tutor.nacionalidad,
+            estado: 'Activo'
+          };
+
+          // Generar token temporal
+          const tempToken = btoa(`padre:${tutor.identificacion}:${Date.now()}`);
+          
+          localStorage.setItem('authToken', tempToken);
+          localStorage.setItem('currentUser', JSON.stringify(user));
+
+          return { 
+            success: true, 
+            user, 
+            token: tempToken,
+            isPadre: true
+          };
+        } else {
+          return {
+            success: false,
+            error: 'No se encontró ningún tutor con ese nombre y cédula'
+          };
+        }
+      } else {
+        throw new Error('Error al obtener datos de tutores');
+      }
+    } catch (error) {
+      console.error('[authService] Error en login de padre:', error);
+      return {
+        success: false,
+        error: 'Error del servidor. No se pudo verificar la información del tutor.'
+      };
+    }
+  },
+
   // Fallback authentication method
   async fallbackLogin(username, password) {
     try {

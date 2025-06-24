@@ -12,10 +12,14 @@ import {
   CardBody, 
   Checkbox,
   Divider,
-  Badge
+  Badge,
+  Select,
+  SelectItem
 } from '@nextui-org/react';
 import { isWeekend, addDays, format } from 'date-fns';
-import { agregarCitaVacuna, registrarVacunacion, getVacunas, getLotesVacunas, getPersonalSalud } from '../../services/pacientesService';
+import { agregarCitaVacuna, registrarVacunacionesMultiples, getVacunas, getLotesVacunas} from '../../services/pacientesService';
+import { useAuth } from '../../context/AuthContext';
+import centrosService from '../../services/centrosService';
 
 // Utilidad para convertir "4 meses", "9-14 años", etc. a meses
 function edadRecomendadaAMeses(edad) {
@@ -81,8 +85,12 @@ export default function RegistrarVacunacionModal({
   onClose,
   paciente,
   esquema,
+  vacunas,
+  lotesVacunas,
   onVacunacionRegistrada
 }) {
+  const { currentUser } = useAuth(); // Obtener usuario loggeado
+
   // Calcula feriados para el año actual y el próximo (por si la cita es a futuro)
   const year = new Date().getFullYear();
   const feriadosRD = useMemo(() => [
@@ -96,40 +104,59 @@ export default function RegistrarVacunacionModal({
   const [editandoCita, setEditandoCita] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [search, setSearch] = useState("");
+  const [centroSeleccionado, setCentroSeleccionado] = useState("");
 
   // Estado local para simular historial y próxima cita
   const [historialLocal, setHistorialLocal] = useState([]);
   const [citaLocal, setCitaLocal] = useState(null);
 
   // Backend data
-  const [vacunasDisponibles, setVacunasDisponibles] = useState([]);
-  const [lotesDisponibles, setLotesDisponibles] = useState([]);
-  const [personalSalud, setPersonalSalud] = useState([]);
+  const [centrosDisponibles, setCentrosDisponibles] = useState([]);
+  const [setVacunasDisponibles] = useState([]);
+  const [setLotesDisponibles] = useState([]);
 
-  // Fetch backend data when modal opens
+  // Fetch backend data when modal opens (for validation purposes)
   useEffect(() => {
     if (isOpen) {
       const fetchBackendData = async () => {
         try {
-          const [vacunas, lotes, personal] = await Promise.all([
-            getVacunas(),
-            getLotesVacunas(), 
-            getPersonalSalud()
-          ]);
-          setVacunasDisponibles(vacunas);
-          setLotesDisponibles(lotes);
-          setPersonalSalud(personal);
+          console.log('[RegistrarVacunacionModal] Cargando datos del backend...');
+          
+          // Si se reciben vacunas y lotes como props, usarlos, sino cargarlos del backend
+          if (vacunas && vacunas.length > 0) {
+            console.log('[RegistrarVacunacionModal] Usando vacunas de props:', vacunas);
+            setVacunasDisponibles(vacunas);
+          } else {
+            console.log('[RegistrarVacunacionModal] Cargando vacunas del backend...');
+            const vacunasData = await getVacunas();
+            setVacunasDisponibles(vacunasData || []);
+          }
+          
+          if (lotesVacunas && lotesVacunas.length > 0) {
+            console.log('[RegistrarVacunacionModal] Usando lotes de props:', lotesVacunas);
+            setLotesDisponibles(lotesVacunas);
+          } else {
+            console.log('[RegistrarVacunacionModal] Cargando lotes del backend...');
+            const lotesData = await getLotesVacunas();
+            setLotesDisponibles(lotesData || []);
+          }
+          
+          // Siempre cargar centros del backend
+          const centros = await centrosService.getCentros();
+          setCentrosDisponibles(centros || []);
+          
+          console.log('[RegistrarVacunacionModal] Datos cargados exitosamente');
         } catch (error) {
-          console.error('Error fetching backend data:', error);
-          // Continue with empty arrays - the UI will use fallback IDs
+          console.error('[RegistrarVacunacionModal] Error fetching backend data:', error);
+          setCentrosDisponibles([]);
           setVacunasDisponibles([]);
           setLotesDisponibles([]);
-          setPersonalSalud([]);
         }
       };
       fetchBackendData();
     }
-  }, [isOpen]);
+  }, [isOpen, vacunas, lotesVacunas, setVacunasDisponibles, setLotesDisponibles]);
 
   useEffect(() => {
     if (isOpen && paciente && esquema) {
@@ -154,6 +181,8 @@ export default function RegistrarVacunacionModal({
       setSuccess(false);
       setHistorialLocal([]);
       setCitaLocal(null);
+      // Establecer centro por defecto si el paciente ya tiene uno asignado
+      setCentroSeleccionado(paciente.id_centro_salud || "");
     }
   }, [isOpen, paciente, esquema]);
 
@@ -182,77 +211,43 @@ export default function RegistrarVacunacionModal({
   // Registro real en backend
   const handleSubmit = async () => {
     setLoading(true);
-    console.log('Iniciando registro de vacunación para paciente:', paciente);
-    
     try {
       // Obtener las vacunas seleccionadas
       const nuevasVacunas = vacunasParaEdad.filter(v => aplicadas[v.id_esquema]);
       const idPaciente = paciente?.id_niño || paciente?.id_paciente;
-      
       if (nuevasVacunas.length === 0) {
         alert('Por favor selecciona al menos una vacuna para aplicar.');
         setLoading(false);
         return;
       }
-
       if (!idPaciente) {
         alert('Error: ID de paciente no válido.');
         setLoading(false);
         return;
       }
-
-      console.log('Registrando vacunas:', nuevasVacunas);
-      console.log('ID del paciente:', idPaciente);
-      console.log('Backend data available:', { 
-        vacunas: vacunasDisponibles.length, 
-        lotes: lotesDisponibles.length, 
-        personal: personalSalud.length 
-      });
-
-      // Generate UUID function
-      const generateUUID = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          const r = Math.random() * 16 | 0;
-          const v = c === 'x' ? r : ((r & 0x3) | 0x8);
-          return v.toString(16);
-        });
-      };
-
-      // Get first available lot and staff member as defaults
-      const defaultLote = lotesDisponibles.length > 0 ? lotesDisponibles[0].id_lote : generateUUID();
-      const defaultPersonal = personalSalud.length > 0 ? personalSalud[0].id_personal : generateUUID();
-      const defaultCentro = paciente.id_centro_salud || generateUUID();
-
-      // Registrar cada vacuna en el backend
-      const fechaHoy = new Date().toISOString();
-      const resultados = [];
-      
-      for (const vacuna of nuevasVacunas) {
-        try {
-          // Find matching vaccine in backend data by name
-          const vacunaBackend = vacunasDisponibles.find(v => 
-            v.nombre && vacuna.descripcion && 
-            v.nombre.toLowerCase().includes(vacuna.descripcion.toLowerCase())
-          );
-          
-          const resultado = await registrarVacunacion({
-            id_paciente: idPaciente,
-            id_lote: defaultLote,
-            id_personal: defaultPersonal,
-            id_centro: defaultCentro,
-            fecha_aplicacion: fechaHoy,
-            dosis_aplicada: 1,
-            sitio_aplicacion: 'Brazo izquierdo',
-            notas: `Vacuna del esquema: ${vacuna.descripcion}. ${vacunaBackend ? `ID Vacuna: ${vacunaBackend.id_vacuna}` : 'Vacuna de esquema'}`,
-          });
-          resultados.push(resultado);
-          console.log('Vacuna registrada:', resultado);
-        } catch (error) {
-          console.error('Error registrando vacuna individual:', error);
-          // Continuar con las demás vacunas aunque una falle
-        }
+      // Obtener ID del usuario loggeado (admin, director, doctor)
+      const idUsuarioLoggeado = currentUser?.id || currentUser?.id_usuario;
+      if (!idUsuarioLoggeado) {
+        alert('Error: Usuario no identificado. Debe estar autenticado para registrar vacunaciones.');
+        setLoading(false);
+        return;
       }
-
+      // Validar que se haya seleccionado un centro
+      if (!centroSeleccionado && !paciente.id_centro_salud) {
+        alert('Error: Debe seleccionar un centro de salud para registrar la vacunación.');
+        setLoading(false);
+        return;
+      }
+      // Usar la función robusta para registrar todas
+      await registrarVacunacionesMultiples({
+        vacunas: nuevasVacunas,
+        id_paciente: idPaciente,
+        fecha_aplicacion: new Date().toISOString(),
+        id_centro: centroSeleccionado || paciente.id_centro_salud,
+        sitio_aplicacion: 'Brazo izquierdo',
+        notas: '',
+        id_usuario: idUsuarioLoggeado // <-- ID del usuario loggeado
+      });
       // Actualizar historial local para mostrar feedback inmediato
       const fechaFormateada = format(new Date(), 'yyyy-MM-dd');
       setHistorialLocal(prev => [
@@ -263,40 +258,46 @@ export default function RegistrarVacunacionModal({
           registrado: true 
         }))
       ]);
-
       // Registrar próxima cita en backend si hay próxima cita
       if (proximaCita && paciente && idPaciente) {
         try {
-          console.log('Registrando próxima cita:', { idPaciente, proximaCita });
           const citaData = {
-            fecha: proximaCita, // This will be mapped to fecha_cita in the service
-            id_centro: paciente.id_centro_salud || defaultCentro,
+            fecha: proximaCita,
+            id_centro: centroSeleccionado || paciente.id_centro_salud,
             estado: 'Pendiente'
           };
           await agregarCitaVacuna(idPaciente, citaData);
           setCitaLocal({ fecha: proximaCita });
-          console.log('Próxima cita registrada exitosamente');
         } catch (e) {
-          console.error('Error registrando próxima cita:', e);
-          // Si falla, igual muestra feedback local pero alerta
           setCitaLocal({ fecha: proximaCita, error: true });
         }
       }
-
       setLoading(false);
       setSuccess(true);
       if (onVacunacionRegistrada) onVacunacionRegistrada();
       setTimeout(() => {
         setSuccess(false);
         onClose();
-      }, 1200);
-
+      }, 2000);
     } catch (error) {
-      console.error('Error general en registro de vacunación:', error);
       alert('Error al registrar la vacunación: ' + error.message);
       setLoading(false);
     }
   };
+
+  // Ordenar vacunas por edad recomendada (de menor a mayor)
+  const vacunasFiltradas = useMemo(() => {
+    let lista = [...vacunasParaEdad];
+    if (search.trim()) {
+      lista = lista.filter(v =>
+        v.descripcion.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+    // Ordenar por edad recomendada en meses
+    return lista.sort((a, b) =>
+      edadRecomendadaAMeses(a.edad_recomendada) - edadRecomendadaAMeses(b.edad_recomendada)
+    );
+  }, [vacunasParaEdad, search]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
@@ -361,35 +362,86 @@ export default function RegistrarVacunacionModal({
 
               <Divider className="my-4" />
 
-              {/* Lista de vacunas disponibles */}
+              {/* Selección de Centro de Salud */}
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
+                <CardBody className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">🏥</span>
+                    <h3 className="text-md font-semibold text-purple-900">Centro de Salud</h3>
+                  </div>
+                  
+                  <Select
+                    label="Seleccionar Centro de Salud"
+                    placeholder="Seleccione un centro de salud"
+                    selectedKeys={centroSeleccionado ? [centroSeleccionado] : []}
+                    onSelectionChange={(keys) => {
+                      const selected = Array.from(keys)[0];
+                      setCentroSeleccionado(selected || "");
+                    }}
+                    variant="bordered"
+                    className="max-w-full"
+                  >
+                    {centrosDisponibles.map((centro) => (
+                      <SelectItem key={centro.id_centro} value={centro.id_centro}>
+                        {centro.nombre_centro} - {centro.provincia}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                  
+                  {centroSeleccionado && (
+                    <div className="mt-3">
+                      <Chip 
+                        color="success" 
+                        variant="flat" 
+                        size="sm"
+                        startContent={<span>✓</span>}
+                        className="text-green-800"
+                      >
+                        Centro seleccionado
+                      </Chip>
+                    </div>
+                  )}
+                </CardBody>
+              </Card>
+
+              <Divider className="my-4" />
+
+              {/* Barra de búsqueda y lista de vacunas disponibles */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-2">
                   <h3 className="text-md font-semibold text-gray-800">
                     💉 Vacunas disponibles para aplicar
                   </h3>
                   <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Buscar vacuna..."
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      size="sm"
+                      className="max-w-xs"
+                    />
                     <Chip 
                       size="sm" 
                       color="default" 
                       variant="flat"
                       className="text-gray-600"
                     >
-                      Total: {vacunasParaEdad.length}
+                      Total: {vacunasFiltradas.length}
                     </Chip>
-                    {vacunasParaEdad.filter(v => aplicadas[v.id_esquema]).length > 0 && (
+                    {vacunasFiltradas.filter(v => aplicadas[v.id_esquema]).length > 0 && (
                       <Chip 
                         size="sm" 
                         color="primary" 
                         variant="flat"
                         className="text-primary-700"
                       >
-                        Seleccionadas: {vacunasParaEdad.filter(v => aplicadas[v.id_esquema]).length}
+                        Seleccionadas: {vacunasFiltradas.filter(v => aplicadas[v.id_esquema]).length}
                       </Chip>
                     )}
                   </div>
                 </div>
-                
-                {vacunasParaEdad.map((vac, index) => (
+                {vacunasFiltradas.map((vac, index) => (
                   <Card 
                     key={vac.id_esquema} 
                     className={`transition-all duration-200 hover:shadow-md cursor-pointer border-2 ${
@@ -474,13 +526,12 @@ export default function RegistrarVacunacionModal({
                     </CardBody>
                   </Card>
                 ))}
-                
-                {vacunasParaEdad.length === 0 && (
+                {vacunasFiltradas.length === 0 && (
                   <Card className="border-dashed border-2 border-gray-300">
                     <CardBody className="p-6 text-center">
                       <div className="text-gray-500">
                         <div className="text-2xl mb-2">💉</div>
-                        <p className="text-sm">No hay vacunas disponibles para la edad actual del paciente</p>
+                        <p className="text-sm">No hay vacunas que coincidan con la búsqueda</p>
                       </div>
                     </CardBody>
                   </Card>
@@ -629,6 +680,11 @@ export default function RegistrarVacunacionModal({
                   ⚠️ Selecciona al menos una vacuna para continuar
                 </p>
               )}
+              {!success && vacunasParaEdad.filter(v => aplicadas[v.id_esquema]).length > 0 && !centroSeleccionado && !paciente?.id_centro_salud && (
+                <p className="text-sm text-orange-500 italic">
+                  ⚠️ Selecciona un centro de salud para continuar
+                </p>
+              )}
             </div>
             
             <div className="flex items-center gap-3">
@@ -637,7 +693,7 @@ export default function RegistrarVacunacionModal({
                   color="primary" 
                   onClick={handleSubmit} 
                   isLoading={loading} 
-                  disabled={loading || vacunasParaEdad.filter(v => aplicadas[v.id_esquema]).length === 0}
+                  disabled={loading || vacunasParaEdad.filter(v => aplicadas[v.id_esquema]).length === 0 || (!centroSeleccionado && !paciente?.id_centro_salud)}
                   className="font-semibold"
                   size="lg"
                 >

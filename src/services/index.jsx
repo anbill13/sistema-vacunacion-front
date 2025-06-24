@@ -5,6 +5,7 @@ export { default as jsonDataService } from './jsonDataService';
 // Servicios de autenticación y usuarios
 export { default as authService } from './authService';
 export { default as usuariosService } from './usuariosService';
+export { default as tutorsService } from './tutorsService';
 
 // Servicios de gestión médica
 export { centrosService } from './centrosService';

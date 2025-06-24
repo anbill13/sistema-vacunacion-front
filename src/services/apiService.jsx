@@ -86,9 +86,25 @@ const apiService = {
 
   async put(endpoint, data) {
     try {
+      console.log(`[apiService] PUT ${endpoint}:`, data);
       const response = await apiClient.put(endpoint, data);
+      console.log(`[apiService] PUT ${endpoint} response status:`, response.status);
+      console.log(`[apiService] PUT ${endpoint} response data:`, response.data);
+      
+      // Si la respuesta es exitosa pero sin contenido, devolver un objeto de éxito
+      if (response.status === 200 || response.status === 204) {
+        if (!response.data || response.data === '') {
+          return { success: true, status: response.status, message: 'Actualización exitosa' };
+        }
+        return response.data;
+      }
+      
       return response.data;
     } catch (error) {
+      console.error(`[apiService] PUT ${endpoint} error:`, error);
+      if (error.response?.data) {
+        throw new Error(error.response.data.message || error.response.data.error || 'Error en la solicitud al servidor');
+      }
       throw new Error(error.message);
     }
   },
