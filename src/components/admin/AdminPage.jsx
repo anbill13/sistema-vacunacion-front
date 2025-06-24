@@ -518,48 +518,48 @@ const AdminPage = () => {
     });
   };
 
+  // Helper function para determinar si un usuario está activo
+  const isUsuarioActive = (usuario) => {
+    if (usuario.estado) {
+      return usuario.estado === 'Activo';
+    } else if (usuario.active !== undefined) {
+      return usuario.active === true;
+    }
+    return true; // Por defecto activo
+  };
+
   const toggleUsuarioStatus = async (usuario) => {
     try {
-      const updatedUser = {
-        ...usuario,
-        active: !usuario.active
-      };
+      console.log('[DEBUG] toggleUsuarioStatus - Usuario original:', usuario);
+      
+      // Determinar el estado actual del usuario
+      const currentActive = isUsuarioActive(usuario);
+      const newActive = !currentActive;
+      
+      console.log('[DEBUG] toggleUsuarioStatus - Estado actual:', currentActive);
+      console.log('[DEBUG] toggleUsuarioStatus - Nuevo estado:', newActive);
+      console.log('[DEBUG] toggleUsuarioStatus - Usuario ID:', usuario.id || usuario.id_usuario);
 
-      await usuariosService.saveUsuario(updatedUser);
+      // Usar el método específico para cambiar solo el estado
+      const userId = usuario.id || usuario.id_usuario;
+      const result = await usuariosService.updateUsuarioStatus(userId, newActive);
 
+      console.log('[DEBUG] toggleUsuarioStatus - Resultado:', result);
+
+      // Recargar la lista de usuarios
       const usuariosActualizados = await usuariosService.getUsuarios();
       setUsuarios(usuariosActualizados);
       setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
 
-      alert(`Usuario ${usuario.name} ${updatedUser.active ? 'activado' : 'desactivado'} correctamente`);
+      alert(`✅ Usuario ${usuario.name || usuario.nombre} ${newActive ? 'activado' : 'desactivado'} correctamente`);
     } catch (error) {
       console.error('Error al actualizar estado del usuario:', error);
-      alert('Error al actualizar el estado del usuario');
+      console.error('Error details:', error.message);
+      alert(`Error al actualizar el estado del usuario: ${error.message}`);
     }
   };
 
-  const handleDeleteUsuario = async (usuario) => {
-    if (usuario.role === 'administrador') {
-      alert('No se puede eliminar al usuario administrador');
-      return;
-    }
 
-    const confirmed = window.confirm(`¿Está seguro de eliminar al usuario ${usuario.name}?`);
-    if (confirmed) {
-      try {
-        await usuariosService.deleteUsuario(usuario.id);
-
-        const usuariosActualizados = await usuariosService.getUsuarios();
-        setUsuarios(usuariosActualizados);
-        setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
-
-        alert('Usuario eliminado correctamente');
-      } catch (error) {
-        console.error('Error al eliminar usuario:', error);
-        alert('Error al eliminar el usuario');
-      }
-    }
-  };
 
   const handleUsuarioFormChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -573,26 +573,50 @@ const AdminPage = () => {
   const handleUsuarioSubmit = async (e) => {
     e.preventDefault();
 
-    if (usuarioForm.password !== usuarioForm.confirmPassword) {
-      alert('Las contraseñas no coinciden');
+    // Validaciones básicas
+    if (!usuarioForm.name || usuarioForm.name.trim() === '') {
+      alert('El nombre completo es requerido');
       return;
     }
 
-    // Validar que se proporcione contraseña
+    if (!usuarioForm.username || usuarioForm.username.trim() === '') {
+      alert('El nombre de usuario es requerido');
+      return;
+    }
+
     if (!usuarioForm.password || usuarioForm.password.trim() === '') {
       alert('La contraseña es requerida');
       return;
     }
 
+    if (usuarioForm.password.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (usuarioForm.password !== usuarioForm.confirmPassword) {
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+
+    // Validar email si se proporciona
+    if (usuarioForm.email && usuarioForm.email.trim() !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(usuarioForm.email)) {
+        alert('Por favor ingrese un email válido');
+        return;
+      }
+    }
+
     try {
       // Construir el objeto con los nombres y valores que espera el backend
       const usuarioData = {
-        nombre: usuarioForm.name,
-        username: usuarioForm.username,
-        password: usuarioForm.password, // Siempre enviar password
+        nombre: usuarioForm.name.trim(),
+        username: usuarioForm.username.trim(),
+        password: usuarioForm.password,
         rol: usuarioForm.role,
-        email: usuarioForm.email && usuarioForm.email.trim() !== '' ? usuarioForm.email : null,
-        telefono: usuarioForm.telefono && usuarioForm.telefono.trim() !== '' ? usuarioForm.telefono : null,
+        email: usuarioForm.email && usuarioForm.email.trim() !== '' ? usuarioForm.email.trim() : null,
+        telefono: usuarioForm.telefono && usuarioForm.telefono.trim() !== '' ? usuarioForm.telefono.trim() : null,
         id_centro: null // Siempre null ya que se quitó el campo del formulario
       };
       
@@ -634,7 +658,25 @@ const AdminPage = () => {
       setEditingUsuario(null);
     } catch (error) {
       console.error('Error al guardar usuario:', error);
-      alert('Error al guardar el usuario. Por favor, inténtelo de nuevo.');
+      
+      // Mejorar el manejo de errores para mostrar mensajes más específicos
+      let errorMessage = 'Error al guardar el usuario. Por favor, inténtelo de nuevo.';
+      
+      if (error.message) {
+        if (error.message.includes('username') || error.message.includes('usuario')) {
+          errorMessage = 'El nombre de usuario ya existe. Por favor, elija otro.';
+        } else if (error.message.includes('email') || error.message.includes('correo')) {
+          errorMessage = 'El email ya está registrado. Por favor, use otro email.';
+        } else if (error.message.includes('validación') || error.message.includes('Validación')) {
+          errorMessage = 'Los datos ingresados no son válidos. Verifique todos los campos.';
+        } else if (error.message.includes('servidor') || error.message.includes('conexión')) {
+          errorMessage = 'Error de conexión con el servidor. Verifique su conexión a internet.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -1090,14 +1132,16 @@ const AdminPage = () => {
                       <td><span className="badge badge-primary">Administrador</span></td>
                       <td>admin@sistema.com</td>
                       <td>
-                        <button
-                          className="badge badge-success"
-                          style={{ cursor: 'not-allowed', border: 'none', opacity: '0.8' }}
-                          title="El administrador principal no puede ser desactivado"
+                        <Button
+                          color="success"
+                          variant="flat"
+                          size="sm"
                           disabled
+                          className="min-w-20 opacity-80"
+                          title="El administrador principal no puede ser desactivado"
                         >
-                          Activo
-                        </button>
+                          ✅ Activo
+                        </Button>
                       </td>
                       <td>
                         <div className="relative flex gap-2">
@@ -1117,18 +1161,6 @@ const AdminPage = () => {
                               })}
                             >
                               <span className="mr-1">✏️</span> Editar
-                            </Button>
-                          </Tooltip>
-                          <Tooltip content="El administrador principal no puede ser eliminado" placement="top">
-                            <Button
-                              color="danger"
-                              variant="shadow"
-                              size="sm"
-                              className="floating-action-btn"
-                              disabled
-                              style={{ opacity: '0.5' }}
-                            >
-                              <span className="mr-1">🗑️</span> Eliminar
                             </Button>
                           </Tooltip>
                         </div>
@@ -1153,14 +1185,16 @@ const AdminPage = () => {
                         </td>
                         <td>{usuario.email}</td>
                         <td>
-                          <button
-                            className={`badge ${usuario.active !== false ? 'badge-success' : 'badge-danger'}`}
+                          <Button
+                            color={isUsuarioActive(usuario) ? 'success' : 'danger'}
+                            variant="flat"
+                            size="sm"
                             onClick={() => toggleUsuarioStatus(usuario)}
-                            style={{ cursor: 'pointer', border: 'none' }}
-                            title={usuario.active !== false ? 'Clic para desactivar' : 'Clic para activar'}
+                            className="min-w-20"
+                            title={isUsuarioActive(usuario) ? 'Clic para desactivar' : 'Clic para activar'}
                           >
-                            {usuario.active !== false ? 'Activo' : 'Inactivo'}
-                          </button>
+                            {isUsuarioActive(usuario) ? '✅ Activo' : '❌ Inactivo'}
+                          </Button>
                         </td>
                         <td>
                           <div className="relative flex gap-2">
@@ -1173,17 +1207,6 @@ const AdminPage = () => {
                                 onClick={() => handleEditUsuario(usuario)}
                               >
                                 <span className="mr-1">✏️</span> Editar
-                              </Button>
-                            </Tooltip>
-                            <Tooltip content="Eliminar usuario" placement="top">
-                              <Button
-                                color="danger"
-                                variant="shadow"
-                                size="sm"
-                                className="floating-action-btn"
-                                onClick={() => handleDeleteUsuario(usuario)}
-                              >
-                                <span className="mr-1">🗑️</span> Eliminar
                               </Button>
                             </Tooltip>
                           </div>
@@ -1732,14 +1755,13 @@ const AdminPage = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Correo Electrónico</label>
+                      <label>Correo Electrónico (Opcional)</label>
                       <input
                         type="email"
                         name="email"
                         value={usuarioForm.email}
                         onChange={handleUsuarioFormChange}
                         className="form-control"
-                        required
                         placeholder="correo@ejemplo.com"
                       />
                     </div>
