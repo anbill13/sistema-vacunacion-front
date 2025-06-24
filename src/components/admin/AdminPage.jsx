@@ -187,6 +187,8 @@ const AdminPage = () => {
     name: '',
     username: '',
     email: '',
+    telefono: '',
+    id_centro: '',
     password: '',
     confirmPassword: '',
     role: 'director',
@@ -269,37 +271,28 @@ const AdminPage = () => {
   const handleSubmitCentro = async (e) => {
     e.preventDefault();
     try {
+      // Construir el objeto SOLO con los campos que espera el backend
       const newCentro = {
-        id_centro: editingCentro ? editingCentro.id_centro : null,
-        nombre_centro: centroForm.nombre_centro || null,
-        nombre_corto: centroForm.nombre_corto || null,
-        direccion: centroForm.direccion || null,
+        nombre_centro: centroForm.nombre_centro,
+        nombre_corto: centroForm.nombre_corto,
+        direccion: centroForm.direccion,
         latitud: centroForm.latitud !== '' ? parseFloat(centroForm.latitud) : null,
         longitud: centroForm.longitud !== '' ? parseFloat(centroForm.longitud) : null,
-        telefono: centroForm.telefono || null,
-        director: centroForm.director || null,
-        sitio_web: centroForm.sitio_web || null,
-        estado: centroForm.estado || 'Activo' // Usar el valor seleccionado
+        telefono: centroForm.telefono,
+        director: centroForm.director,
+        sitio_web: centroForm.sitio_web
       };
+      // NO enviar id_centro en el body
 
       if (!newCentro.nombre_centro || !newCentro.direccion) {
-        alert('El nombre del centro y la dirección son obligatorios');
+        alert('Nombre del centro y dirección son obligatorios');
         return;
       }
 
       await centrosService.saveCentro(newCentro);
 
       if (typeof globalReloadData === 'function') {
-        await globalReloadData();
-      }
-
-      if (newCentro.director) {
-        const directorUser = directores.find(d => d.name === newCentro.director);
-        if (directorUser) {
-          await usuariosService.asignarCentroADirector(directorUser.id_usuario || directorUser.id, newCentro);
-          const usuariosActualizados = await usuariosService.getUsuarios();
-          setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
-        }
+        globalReloadData();
       }
 
       alert(`Centro ${editingCentro ? 'actualizado' : 'creado'} correctamente`);
@@ -314,7 +307,7 @@ const AdminPage = () => {
         telefono: '',
         director: '',
         sitio_web: '',
-        estado: 'Activo' // Restablecer a valor por defecto
+        estado: 'Activo'
       });
       setEditingCentro(null);
     } catch (error) {
@@ -490,6 +483,8 @@ const AdminPage = () => {
       name: '',
       username: '',
       email: '',
+      telefono: '',
+      id_centro: '',
       password: '',
       confirmPassword: '',
       role: 'director',
@@ -499,17 +494,27 @@ const AdminPage = () => {
   };
 
   const handleEditUsuario = (usuario) => {
+    console.log('[DEBUG] Editando usuario:', usuario);
+    console.log('[DEBUG] Usuario actual es:', currentUser.role);
+    
     setEditingUsuario(usuario);
     setUsuarioForm({
       name: usuario.name || '',
       username: usuario.username || '',
       email: usuario.email || '',
+      telefono: usuario.telefono || '',
+      id_centro: '', // Siempre vacío ya que se quitó el campo
       password: '',
       confirmPassword: '',
       role: usuario.role || 'director',
       active: usuario.active !== undefined ? usuario.active : true
     });
     setShowAddUsuarioModal(true);
+    
+    console.log('[DEBUG] Formulario cargado para edición (sin campo id_centro):', {
+      userRole: usuario.role,
+      currentUserRole: currentUser.role
+    });
   };
 
   const toggleUsuarioStatus = async (usuario) => {
@@ -557,6 +562,7 @@ const AdminPage = () => {
 
   const handleUsuarioFormChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
     setUsuarioForm({
       ...usuarioForm,
       [name]: type === 'checkbox' ? checked : value
@@ -571,23 +577,44 @@ const AdminPage = () => {
       return;
     }
 
+    // Validar que se proporcione contraseña
+    if (!usuarioForm.password || usuarioForm.password.trim() === '') {
+      alert('La contraseña es requerida');
+      return;
+    }
+
     try {
+      // Construir el objeto con los nombres y valores que espera el backend
       const usuarioData = {
-        id: editingUsuario?.id,
-        name: usuarioForm.name,
+        nombre: usuarioForm.name,
         username: usuarioForm.username,
-        email: usuarioForm.email,
-        role: usuarioForm.role,
-        active: usuarioForm.active,
-        centrosAsignados: editingUsuario?.centrosAsignados || [],
-        password: usuarioForm.password
+        password: usuarioForm.password, // Siempre enviar password
+        rol: usuarioForm.role,
+        email: usuarioForm.email && usuarioForm.email.trim() !== '' ? usuarioForm.email : null,
+        telefono: usuarioForm.telefono && usuarioForm.telefono.trim() !== '' ? usuarioForm.telefono : null,
+        id_centro: null // Siempre null ya que se quitó el campo del formulario
       };
+      
+      // Debug: verificar los datos que se van a enviar
+      console.log('\n=== DEBUG USUARIO SUBMIT ===');
+      console.log('[DEBUG] Usuario actual que modifica:', currentUser.role);
+      console.log('[DEBUG] Formulario completo:', usuarioForm);
+      console.log('[DEBUG] Datos del usuario a enviar:', usuarioData);
+      console.log('[DEBUG] Rol del usuario objetivo:', usuarioForm.role);
+      console.log('[DEBUG] id_centro siempre null (campo removido):', usuarioData.id_centro, typeof usuarioData.id_centro);
+      console.log('[DEBUG] Es edición?:', !!editingUsuario);
+      console.log('============================\n');
+      
+      // Si es edición, agregar el ID
+      if (editingUsuario && editingUsuario.id) {
+        usuarioData.id = editingUsuario.id;
+      }
 
       await usuariosService.saveUsuario(usuarioData);
 
       const usuariosActualizados = await usuariosService.getUsuarios();
       setUsuarios(usuariosActualizados);
-      setDirectores(usuariosActualizados.filter(u => u.role === 'director'));
+      setDirectores(usuariosActualizados.filter(u => u.rol === 'director'));
 
       alert(`Usuario ${usuarioForm.name} ${editingUsuario ? 'actualizado' : 'creado'} correctamente`);
 
@@ -596,6 +623,8 @@ const AdminPage = () => {
         name: '',
         username: '',
         email: '',
+        telefono: '',
+        id_centro: '',
         password: '',
         confirmPassword: '',
         role: 'director',
@@ -1699,6 +1728,18 @@ const AdminPage = () => {
                     </div>
                   </div>
 
+                  <div className="form-group">
+                    <label>Teléfono</label>
+                    <input
+                      type="tel"
+                      name="telefono"
+                      value={usuarioForm.telefono}
+                      onChange={handleUsuarioFormChange}
+                      className="form-control"
+                      placeholder="+1-809-532-0001"
+                    />
+                  </div>
+
                   <div className="form-row">
                     <div className="form-group">
                       <label>Contraseña</label>
@@ -1708,8 +1749,8 @@ const AdminPage = () => {
                         value={usuarioForm.password}
                         onChange={handleUsuarioFormChange}
                         className="form-control"
-                        placeholder={editingUsuario ? 'Dejar en blanco para no cambiar' : 'Mínimo 6 caracteres'}
-                        required={!editingUsuario}
+                        placeholder={editingUsuario ? 'Ingrese nueva contraseña' : 'Mínimo 6 caracteres'}
+                        required
                       />
                     </div>
                     <div className="form-group">
@@ -1720,8 +1761,8 @@ const AdminPage = () => {
                         value={usuarioForm.confirmPassword}
                         onChange={handleUsuarioFormChange}
                         className="form-control"
-                        placeholder={editingUsuario ? 'Dejar en blanco para no cambiar' : 'Repetir contraseña'}
-                        required={!editingUsuario}
+                        placeholder={editingUsuario ? 'Confirme nueva contraseña' : 'Repetir contraseña'}
+                        required
                       />
                     </div>
                   </div>
