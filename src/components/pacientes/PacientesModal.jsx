@@ -30,7 +30,7 @@ import vacunasService from '../../services/vacunasService';
 const API_URL = 'https://sistema-vacunacion-backend.onrender.com/api';
 
 const PacientesModal = ({ isOpen, onClose, centro }) => {
-  const { dosisAplicadas = [], vacunas = [], lotesVacunas = [] } = useData();
+  const { dosisAplicadas = [], vacunas = [] } = useData();
   const [pacientesCentro, setPacientesCentro] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedPacienteId, setExpandedPacienteId] = useState(null);
@@ -104,7 +104,7 @@ const PacientesModal = ({ isOpen, onClose, centro }) => {
       isMounted = false;
       console.log(`[PacientesModal #${Date.now()}] Cleanup: Component unmounted`);
     };
-  }, [isOpen, centro]);
+  }, [isOpen, centro, loading]);
 
   useEffect(() => {
     if (!isOpen) {

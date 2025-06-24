@@ -58,8 +58,14 @@ export default function GestionPacientes() {
       try {
         console.log('[GestionPacientes] Fetching all children at', new Date().toISOString());
         const fetchedNinos = await pacientesService.getAllChildren();
-        setNinos(fetchedNinos);
-        console.log('[GestionPacientes] Niños loaded:', fetchedNinos);
+        
+        // Mapeo para asegurar que todos los pacientes tengan id_niño
+        const ninosConIdNino = fetchedNinos.map(n => ({
+          ...n,
+          id_niño: n.id_paciente // Siempre usar id_paciente, nunca n.id
+        }));
+        setNinos(ninosConIdNino);
+        console.log('[GestionPacientes] Niños loaded:', ninosConIdNino);
 
         // Nota: Si necesitas tutores, deberías integrarlo desde usuariosService o una fuente similar
         // Por ahora, dejamos setTutores([]) como placeholder
@@ -158,13 +164,32 @@ export default function GestionPacientes() {
     setEditingNino(null);
   };
 
-  const handleOpenVacunacionModal = (nino) => {
+  const handleOpenVacunacionModal = async (nino) => {
+    console.log('Abriendo modal de vacunación para:', nino);
     setPacienteVacunacion(nino);
+    // Verificar que tenemos un ID válido (id_niño o id_paciente)
+    const idPaciente = nino?.id_niño || nino?.id_paciente;
+    console.log('ID del paciente para citas:', idPaciente);
+    if (!nino || !idPaciente) {
+      setCitasPaciente([]);
+      setVacunacionModalOpen(true);
+      alert('No se puede cargar citas: paciente o ID de niño inválido.');
+      return;
+    }
     try {
-      setCitasPaciente(pacientesService.getCitasVacunas(nino.id_niño) || []);
+      // Cargar citas y historial en paralelo
+      const [citas, historial] = await Promise.all([
+        pacientesService.getCitasVacunas(idPaciente),
+        cargarHistorialVacunacion(idPaciente)
+      ]);
+      
+      console.log('Citas obtenidas:', citas);
+      console.log('Historial obtenido:', historial);
+      setCitasPaciente(citas || []);
     } catch (e) {
       setCitasPaciente([]);
-      console.error('[GestionPacientes] Error fetching citas:', e);
+      alert('Error al cargar datos: ' + (e.message || e));
+      console.error('[GestionPacientes] Error fetching data:', e);
     }
     setVacunacionModalOpen(true);
   };
@@ -174,14 +199,37 @@ export default function GestionPacientes() {
     return tutor ? `${tutor.nombre} ${tutor.apellido}` : "No especificado";
   };
 
+  // Estado para historial de vacunación
+  const [historialVacunacion, setHistorialVacunacion] = useState({});
+
   const getHistorialVacunas = (ninoId) => {
-    // Nota: Esto requiere dosisAplicadas y vacunas, que no se cargan aquí. Podrías necesitar integrarlos si es necesario.
-    return []; // Placeholder; ajusta según tu lógica
+    // Retornar historial cacheado o array vacío
+    return historialVacunacion[ninoId] || [];
+  };
+
+  // Función para cargar historial de vacunación
+  const cargarHistorialVacunacion = async (ninoId) => {
+    try {
+      const historial = await pacientesService.getHistorialVacunacion(ninoId);
+      setHistorialVacunacion(prev => ({
+        ...prev,
+        [ninoId]: historial
+      }));
+      return historial;
+    } catch (error) {
+      console.error('Error cargando historial de vacunación:', error);
+      return [];
+    }
   };
 
   const getCentroNombre = (idCentro) => {
     // Nota: Esto requiere centrosVacunacion, que no se carga aquí. Podrías necesitar integrarlo.
     return "No especificado"; // Placeholder; ajusta según tu lógica
+  };
+
+  // Función auxiliar para obtener el ID correcto del paciente
+  const getPacienteId = (paciente) => {
+    return paciente?.id_niño || paciente?.id_paciente;
   };
 
   const handleNinoAdd = (newNino) => {
@@ -279,7 +327,7 @@ export default function GestionPacientes() {
                   </Button>
                   {currentUser && ['doctor', 'administrador', 'director'].includes(currentUser.role) && (
                     <>
-                      <Button size="sm" color="success" variant="flat" onClick={() => handleOpenVacunacionModal(nino)}>
+                      <Button size="sm" color="success" variant="flat" onClick={async () => await handleOpenVacunacionModal(nino)}>
                         Registrar Vacunación
                       </Button>
                       <Button size="sm" color="secondary" variant="flat" onClick={() => { setPacienteVacunacion(nino); setCitaModalOpen(true); }}>
@@ -303,24 +351,12 @@ export default function GestionPacientes() {
                         <p><span className="font-semibold">Tutor:</span> {getTutorNombre(nino.id_tutor)}</p>
                         <p><span className="font-semibold">Centro de Salud:</span> {getCentroNombre(nino.id_centro_salud)}</p>
                       </div>
-                      {(() => {
-                        try {
-                          const citas = pacientesService.getCitasVacunas(nino.id_niño) || [];
-                          if (citas.length > 0) {
-                            const proximaCita = citas.sort((a, b) => new Date(a.fecha) - new Date(b.fecha))[0];
-                            return (
-                              <div className="mt-4 p-3 rounded-lg bg-primary-100 dark:bg-primary-900/40 border border-primary-300 dark:border-primary-700">
-                                <span className="font-semibold text-primary-800 dark:text-primary-200">Próxima cita:</span>{" "}
-                                <span className="font-medium">{new Date(proximaCita.fecha).toLocaleString()}</span>{" "}
-                                <span className="font-medium">Vacuna: {proximaCita.vacunaId ? 'Sin nombre' : ''}</span>
-                              </div>
-                            );
-                          }
-                          return null;
-                        } catch {
-                          return null;
-                        }
-                      })()}
+                      {/* Las citas se mostrarán cuando se abra el modal de vacunación */}
+                      <div className="mt-4 p-3 rounded-lg bg-info-100 dark:bg-info-900/40 border border-info-300 dark:border-info-700">
+                        <span className="font-semibold text-info-800 dark:text-info-200">
+                          Haz clic en "Registrar Vacuna" para ver el historial y próximas citas
+                        </span>
+                      </div>
                     </div>
                     
                     <div>
@@ -401,7 +437,7 @@ export default function GestionPacientes() {
         paciente={pacienteVacunacion}
         lotesVacunas={[]} // Placeholder; integra lotesVacunas si es necesario
         vacunas={[]} // Placeholder; integra vacunas si es necesario
-        historialVacunas={pacienteVacunacion ? getHistorialVacunas(pacienteVacunacion.id_niño) : []}
+        historialVacunas={pacienteVacunacion ? getHistorialVacunas(getPacienteId(pacienteVacunacion)) : []}
         citas={citasPaciente}
         onRegistrarVacuna={async (data) => {
           setLoadingVacunacion(true);
@@ -411,13 +447,8 @@ export default function GestionPacientes() {
               setLoadingVacunacion(false);
               return;
             }
-            const nuevaDosis = {
-              ...data,
-              id_vacuna: String(data.id_vacuna),
-              id_lote: String(data.id_lote),
-              fecha_aplicacion: new Date().toISOString(),
-            };
-            // Nota: Esto requiere jsonService y lógica de actualización; ajusta según tu implementación
+            // Nota: Aquí deberías enviar los datos de la nueva dosis a tu servicio/backend.
+            // Por ejemplo: await pacientesService.registrarVacunacion(pacienteVacunacion.id_niño, { ...data, fecha_aplicacion: new Date().toISOString() });
             setLoadingVacunacion(false);
           } catch (e) {
             alert('Error al registrar la vacunación');
@@ -429,8 +460,10 @@ export default function GestionPacientes() {
           setLoadingVacunacion(true);
           try {
             if (pacienteVacunacion) {
-              await pacientesService.agregarCitaVacuna(pacienteVacunacion.id_niño, cita);
-              setCitasPaciente(pacientesService.getCitasVacunas(pacienteVacunacion.id_niño) || []);
+              const idPaciente = getPacienteId(pacienteVacunacion);
+              await pacientesService.agregarCitaVacuna(idPaciente, cita);
+              const citasActualizadas = await pacientesService.getCitasVacunas(idPaciente);
+              setCitasPaciente(citasActualizadas || []);
             }
             setCitaModalOpen(false);
           } catch (e) {
@@ -450,8 +483,10 @@ export default function GestionPacientes() {
           setLoadingVacunacion(true);
           try {
             if (pacienteVacunacion) {
-              await pacientesService.agregarCitaVacuna(pacienteVacunacion.id_niño, cita);
-              setCitasPaciente(pacientesService.getCitasVacunas(pacienteVacunacion.id_niño) || []);
+              const idPaciente = getPacienteId(pacienteVacunacion);
+              await pacientesService.agregarCitaVacuna(idPaciente, cita);
+              const citasActualizadas = await pacientesService.getCitasVacunas(idPaciente);
+              setCitasPaciente(citasActualizadas || []);
             }
             setCitaModalOpen(false);
           } catch (e) {
@@ -463,8 +498,10 @@ export default function GestionPacientes() {
           setLoadingVacunacion(true);
           try {
             if (pacienteVacunacion) {
-              await pacientesService.editarCitaVacuna(pacienteVacunacion.id_niño, citaId, datos);
-              setCitasPaciente(pacientesService.getCitasVacunas(pacienteVacunacion.id_niño) || []);
+              const idPaciente = getPacienteId(pacienteVacunacion);
+              await pacientesService.editarCitaVacuna(idPaciente, citaId, datos);
+              const citasActualizadas = await pacientesService.getCitasVacunas(idPaciente);
+              setCitasPaciente(citasActualizadas || []);
             }
           } catch (e) {
             console.error('Error al editar cita:', e);
@@ -475,8 +512,10 @@ export default function GestionPacientes() {
           setLoadingVacunacion(true);
           try {
             if (pacienteVacunacion) {
-              await pacientesService.eliminarCitaVacuna(pacienteVacunacion.id_niño, citaId);
-              setCitasPaciente(pacientesService.getCitasVacunas(pacienteVacunacion.id_niño) || []);
+              const idPaciente = getPacienteId(pacienteVacunacion);
+              await pacientesService.eliminarCitaVacuna(idPaciente, citaId);
+              const citasActualizadas = await pacientesService.getCitasVacunas(idPaciente);
+              setCitasPaciente(citasActualizadas || []);
             }
           } catch (e) {
             console.error('Error al eliminar cita:', e);

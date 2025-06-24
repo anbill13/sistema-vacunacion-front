@@ -36,7 +36,7 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div>
-          <h1>Algo salió mal.</h1>
+          <h1>Algo saliÃ³ mal.</h1>
           <p>{this.state.error.message}</p>
           <button onClick={() => this.setState({ hasError: false, error: null })}>
             Intentar de nuevo
