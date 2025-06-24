@@ -18,7 +18,13 @@ const Navigation = ({ activeTab, setActiveTab }) => {
       id: "pacientes",
       label: "Gestión de Pacientes",
       icon: "👥",
-      roles: ["doctor", "administrador", "director"]
+      roles: ["administrador", "director"]
+    },
+    {
+      id: "doctor",
+      label: "Panel del Doctor",
+      icon: "👨‍⚕️",
+      roles: ["doctor"]
     },
     {
       id: "mis-centros",

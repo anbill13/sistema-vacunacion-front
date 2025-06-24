@@ -212,6 +212,34 @@ const usuariosService = {
       console.error('[usuariosService] Error unassigning centro from director:', error);
       throw new Error(error.message || 'Error al desasignar centro del director');
     }
+  },
+
+  // Asignar múltiples centros a doctor
+  async asignarCentrosADoctor(doctorId, centrosIds) {
+    try {
+      const response = await apiService.put(`/api/users/${doctorId}`, {
+        centrosAsignados: centrosIds
+      });
+      console.log('[usuariosService] Assign centros to doctor response:', response);
+      return response;
+    } catch (error) {
+      console.error('[usuariosService] Error assigning centros to doctor:', error);
+      throw new Error(error.message || 'Error al asignar centros al doctor');
+    }
+  },
+
+  // Obtener doctores por centro
+  async getDoctoresPorCentro(centroId) {
+    try {
+      const usuarios = await this.getUsuarios();
+      return usuarios.filter(u => 
+        u.role === 'doctor' && 
+        (u.centrosAsignados?.includes(centroId) || u.id_centro === centroId)
+      );
+    } catch (error) {
+      console.error('[usuariosService] Error getting doctores por centro:', error);
+      return [];
+    }
   }
 };
 

@@ -18,6 +18,7 @@ import {
 import usuariosService from '../../services/usuariosService.jsx';
 import centrosService from '../../services/centrosService.jsx';
 import vacunasService from '../../services/vacunasService.jsx';
+import AsignacionCentros from './AsignacionCentros.jsx';
 
 // Estilos CSS para los botones flotantes
 const floatingButtonStyles = `
@@ -750,6 +751,15 @@ const AdminPage = () => {
             </div>
           }
         />
+        <Tab
+          key="asignaciones"
+          title={
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">🏥👨‍⚕️</span>
+              <span>Asignar Centros</span>
+            </div>
+          }
+        />
       </Tabs>
 
       <div className="space-y-4">
@@ -1155,6 +1165,13 @@ const AdminPage = () => {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Sección de Asignación de Centros */}
+        {activeSection === 'asignaciones' && (
+          <div className="admin-section animate-fadeIn">
+            <AsignacionCentros />
           </div>
         )}
       </div>

@@ -22,6 +22,7 @@ import GestionPacientes from "./components/pacientes/GestionPacientes";
 import PublicPage from "./components/public/PublicPage";
 import AuthPage from "./components/auth/AuthPage";
 import AdminPage from "./components/admin/AdminPage";
+import DoctorPage from "./components/doctores/DoctorPage";
 import { Modal } from "./components/ui/Modal";
 
 class ErrorBoundary extends Component {
@@ -65,7 +66,7 @@ function AppContent({ activeTab, setActiveTab }) {
     if (currentUser && window.location.pathname === '/auth') {
       const newTab = currentUser.role === 'administrador' ? 'admin' :
                      currentUser.role === 'director' ? 'mis-centros' :
-                     currentUser.role === 'doctor' ? 'pacientes' :
+                     currentUser.role === 'doctor' ? 'doctor' :
                      currentUser.role === 'padre' ? 'mis-hijos' : 'centros';
       setActiveTab(newTab);
       navigate('/dashboard');
@@ -98,6 +99,7 @@ function AppContent({ activeTab, setActiveTab }) {
                 {activeTab === "pacientes" && <GestionPacientes />}
                 {activeTab === "mis-centros" && <MisCentros />}
                 {activeTab === "admin" && <AdminPage />}
+                {activeTab === "doctor" && <DoctorPage />}
                 {activeTab === "mis-hijos" && (
                   <Suspense fallback={<div>Cargando...</div>}>
                     {require("./components/padres/MisHijos").default()}
