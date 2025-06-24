@@ -73,54 +73,61 @@ function AppContent({ activeTab, setActiveTab }) {
   }, [currentPage, currentUser, navigate, setActiveTab]);
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          currentUser ? <Navigate to="/dashboard" replace /> : <PublicPage onShowAuth={showAuthPage} />
-        }
-      />
-      <Route
-        path="/auth"
-        element={
-          currentUser ? <Navigate to="/dashboard" replace /> : <AuthPage onBack={showPublicPage} onLogin={handleLogin} />
-        }
-      />
-      <Route
-        path="/dashboard"
-        element={
-          currentUser ? (
-            <div className="container-fluid">
-              <Header onShowLogin={() => setShowLoginModal(true)} />
-              <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
-              <div className="content-wrapper animate-fadeIn">
-                {activeTab === "centros" && <CentrosPage />}
-                {activeTab === "pacientes" && <GestionPacientes />}
-                {activeTab === "mis-centros" && <MisCentros />}
-                {activeTab === "admin" && <AdminPage />}
-                {activeTab === "mis-hijos" && (
-                  <Suspense fallback={<div>Cargando...</div>}>
-                    {require("./components/padres/MisHijos").default()}
-                  </Suspense>
+    <>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            currentUser ? <Navigate to="/dashboard" replace /> : <PublicPage onShowAuth={showAuthPage} />
+          }
+        />
+        <Route
+          path="/auth"
+          element={
+            currentUser ? <Navigate to="/dashboard" replace /> : <AuthPage onBack={showPublicPage} onLogin={handleLogin} />
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            currentUser ? (
+              <div className="container-fluid">
+                <Header onShowLogin={() => setShowLoginModal(true)} />
+                <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+                <div className="content-wrapper animate-fadeIn">
+                  {activeTab === "centros" && <CentrosPage />}
+                  {activeTab === "pacientes" && <GestionPacientes />}
+                  {activeTab === "mis-centros" && <MisCentros />}
+                  {activeTab === "admin" && <AdminPage />}
+                  {activeTab === "mis-hijos" && (
+                    <Suspense fallback={<div>Cargando...</div>}>
+                      {require("./components/padres/MisHijos").default()}
+                    </Suspense>
+                  )}
+                </div>
+                {showLoginModal && (
+                  <Modal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)}>
+                    <AuthPage
+                      isOpen={showLoginModal}
+                      onClose={() => setShowLoginModal(false)}
+                      onLogin={handleLogin}
+                    />
+                  </Modal>
                 )}
               </div>
-              {showLoginModal && (
-                <Modal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)}>
-                  <AuthPage
-                    isOpen={showLoginModal}
-                    onClose={() => setShowLoginModal(false)}
-                    onLogin={handleLogin}
-                  />
-                </Modal>
-              )}
-            </div>
-          ) : (
-            <Navigate to="/auth" replace />
-          )
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route path="/about" element={<React.Suspense fallback={<div>Cargando...</div>}>{require('./pages/About').default()}</React.Suspense>} />
+        <Route path="/no-vacunamos" element={<React.Suspense fallback={<div>Cargando...</div>}>{require('./pages/NoVacunamos').default()}</React.Suspense>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <footer style={{textAlign: 'center', margin: '2rem 0 1rem 0', color: '#888'}}>
+        <a href="/about" style={{textDecoration: 'underline', color: '#0070f3', fontWeight: 500}}>About</a>
+      </footer>
+    </>
   );
 }
 
