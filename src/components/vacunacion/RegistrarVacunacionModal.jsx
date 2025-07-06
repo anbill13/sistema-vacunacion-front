@@ -113,8 +113,7 @@ export default function RegistrarVacunacionModal({
 
   // Backend data
   const [centrosDisponibles, setCentrosDisponibles] = useState([]);
-  const [setVacunasDisponibles] = useState([]);
-  const [setLotesDisponibles] = useState([]);
+  // Note: vacunasDisponibles and lotesDisponibles are used in useEffect for data fetching
 
   // Fetch backend data when modal opens (for validation purposes)
   useEffect(() => {
@@ -126,20 +125,20 @@ export default function RegistrarVacunacionModal({
           // Si se reciben vacunas y lotes como props, usarlos, sino cargarlos del backend
           if (vacunas && vacunas.length > 0) {
             console.log('[RegistrarVacunacionModal] Usando vacunas de props:', vacunas);
-            setVacunasDisponibles(vacunas);
+            // setVacunasDisponibles(vacunas); // Not used in current implementation
           } else {
             console.log('[RegistrarVacunacionModal] Cargando vacunas del backend...');
-            const vacunasData = await getVacunas();
-            setVacunasDisponibles(vacunasData || []);
+            await getVacunas();
+            // setVacunasDisponibles(vacunasData || []); // Not used in current implementation
           }
           
           if (lotesVacunas && lotesVacunas.length > 0) {
             console.log('[RegistrarVacunacionModal] Usando lotes de props:', lotesVacunas);
-            setLotesDisponibles(lotesVacunas);
+            // setLotesDisponibles(lotesVacunas); // Not used in current implementation
           } else {
             console.log('[RegistrarVacunacionModal] Cargando lotes del backend...');
-            const lotesData = await getLotesVacunas();
-            setLotesDisponibles(lotesData || []);
+            await getLotesVacunas();
+            // setLotesDisponibles(lotesData || []); // Not used in current implementation
           }
           
           // Siempre cargar centros del backend
@@ -150,13 +149,13 @@ export default function RegistrarVacunacionModal({
         } catch (error) {
           console.error('[RegistrarVacunacionModal] Error fetching backend data:', error);
           setCentrosDisponibles([]);
-          setVacunasDisponibles([]);
-          setLotesDisponibles([]);
+          // setVacunasDisponibles([]); // Not used in current implementation
+          // setLotesDisponibles([]); // Not used in current implementation
         }
       };
       fetchBackendData();
     }
-  }, [isOpen, vacunas, lotesVacunas, setVacunasDisponibles, setLotesDisponibles]);
+  }, [isOpen, vacunas, lotesVacunas]);
 
   useEffect(() => {
     if (isOpen && paciente && esquema) {

@@ -1,9 +1,9 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import centrosService from '../services/centrosService.jsx';
-import vacunasService from '../services/vacunasService.jsx';
-import usuariosService from '../services/usuariosService.jsx';
-import citasService from '../services/citasService.jsx';
-import { useAuth } from './AuthContext.jsx';
+import centrosService from '../services/centrosService';
+import vacunasService from '../services/vacunasService';
+import usuariosService from '../services/usuariosService';
+import citasService from '../services/citasService';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
 

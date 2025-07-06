@@ -797,13 +797,18 @@ const MisCentros = () => {
                 <form onSubmit={handleCentroSubmit}>
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Nombre del Centro</label>
+                      <label className="flex items-center gap-1">
+                        Nombre del Centro
+                        <span className="text-red-500 text-lg">*</span>
+                      </label>
                       <Input
                         name="nombre_centro"
                         value={centroForm.nombre_centro}
                         onChange={handleCentroFormChange}
                         required
                         placeholder="Ej: Centro de Salud Santo Domingo"
+                        isInvalid={!centroForm.nombre_centro && centroForm.nombre_centro !== undefined}
+                        errorMessage={!centroForm.nombre_centro && centroForm.nombre_centro !== undefined ? "El nombre del centro es requerido" : ""}
                       />
                     </div>
                     <div className="form-group">
@@ -817,18 +822,26 @@ const MisCentros = () => {
                     </div>
                   </div>
                   <div className="form-group">
-                    <label>Dirección</label>
+                    <label className="flex items-center gap-1">
+                      Dirección
+                      <span className="text-red-500 text-lg">*</span>
+                    </label>
                     <Input
                       name="direccion"
                       value={centroForm.direccion}
                       onChange={handleCentroFormChange}
                       required
                       placeholder="Ej: Calle 1, Santo Domingo"
+                      isInvalid={!centroForm.direccion && centroForm.direccion !== undefined}
+                      errorMessage={!centroForm.direccion && centroForm.direccion !== undefined ? "La dirección es requerida" : ""}
                     />
                   </div>
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Latitud</label>
+                      <label className="flex items-center gap-1">
+                        Latitud
+                        <span className="text-red-500 text-lg">*</span>
+                      </label>
                       <Input
                         type="number"
                         name="latitud"
@@ -837,10 +850,15 @@ const MisCentros = () => {
                         placeholder="Ej: 18.4861"
                         step="any"
                         required
+                        isInvalid={!centroForm.latitud && centroForm.latitud !== undefined}
+                        errorMessage={!centroForm.latitud && centroForm.latitud !== undefined ? "La latitud es requerida" : ""}
                       />
                     </div>
                     <div className="form-group">
-                      <label>Longitud</label>
+                      <label className="flex items-center gap-1">
+                        Longitud
+                        <span className="text-red-500 text-lg">*</span>
+                      </label>
                       <Input
                         type="number"
                         name="longitud"
@@ -849,6 +867,8 @@ const MisCentros = () => {
                         placeholder="Ej: -69.9312"
                         step="any"
                         required
+                        isInvalid={!centroForm.longitud && centroForm.longitud !== undefined}
+                        errorMessage={!centroForm.longitud && centroForm.longitud !== undefined ? "La longitud es requerida" : ""}
                       />
                     </div>
                   </div>

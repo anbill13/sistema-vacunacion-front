@@ -1,7 +1,11 @@
 import React from 'react';
 import { Input, Select, SelectItem } from "@nextui-org/react";
+import paisesService from '../../../services/paisesService.jsx';
 
 function NinoForm({ formData, handleChange, handleSelectChange, centros }) {
+  const paises = paisesService.getPaises();
+  const gentilicios = paisesService.getGentilicios();
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Input
@@ -76,33 +80,51 @@ function NinoForm({ formData, handleChange, handleSelectChange, centros }) {
         }
       />
       
-      <Input
-        type="text"
-        label="Nacionalidad"
+      <Select
+        label="Nacionalidad (Gentilicio)"
         name="nacionalidad"
-        value={formData.nacionalidad || ""}
-        onChange={handleChange}
-        placeholder="Ingrese la nacionalidad"
+        selectedKeys={formData.nacionalidad ? [formData.nacionalidad] : []}
+        onSelectionChange={(keys) => handleSelectChange("nacionalidad", keys)}
         isRequired
         variant="bordered"
+        placeholder="Seleccione la nacionalidad"
+        className="max-h-[200px]"
+        scrollShadowProps={{
+          isEnabled: false
+        }}
         startContent={
           <span className="text-default-400 text-small">🏳️</span>
         }
-      />
+      >
+        {gentilicios.map((item) => (
+          <SelectItem key={item.gentilicio} value={item.gentilicio}>
+            {item.gentilicio}
+          </SelectItem>
+        ))}
+      </Select>
       
-      <Input
-        type="text"
+      <Select
         label="País de Nacimiento"
         name="pais_nacimiento"
-        value={formData.pais_nacimiento || ""}
-        onChange={handleChange}
-        placeholder="Ingrese el país de nacimiento"
+        selectedKeys={formData.pais_nacimiento ? [formData.pais_nacimiento] : []}
+        onSelectionChange={(keys) => handleSelectChange("pais_nacimiento", keys)}
         isRequired
         variant="bordered"
+        placeholder="Seleccione el país de nacimiento"
+        className="max-h-[200px]"
+        scrollShadowProps={{
+          isEnabled: false
+        }}
         startContent={
           <span className="text-default-400 text-small">🌎</span>
         }
-      />
+      >
+        {paises.map((item) => (
+          <SelectItem key={item.nombre} value={item.nombre}>
+            {item.nombre}
+          </SelectItem>
+        ))}
+      </Select>
       
       <Select
         label="Centro de Salud"

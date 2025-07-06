@@ -1251,7 +1251,10 @@ const AdminPage = () => {
                 <form onSubmit={handleSubmitCentro} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="form-group">
-                      <label className="block text-sm font-medium mb-1">Nombre del Centro</label>
+                      <label className="flex items-center gap-1 text-sm font-medium mb-1">
+                        Nombre del Centro
+                        <span className="text-red-500 text-lg">*</span>
+                      </label>
                       <input
                         type="text"
                         name="nombre_centro"
@@ -1259,6 +1262,7 @@ const AdminPage = () => {
                         onChange={handleCentroFormChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         required
+                        placeholder="Ej: Centro de Salud Santo Domingo"
                       />
                     </div>
                     <div className="form-group">
@@ -1269,12 +1273,16 @@ const AdminPage = () => {
                         value={centroForm.nombre_corto}
                         onChange={handleCentroFormChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Ej: CSSD"
                       />
                     </div>
                   </div>
 
                   <div className="form-group">
-                    <label className="block text-sm font-medium mb-1">Dirección</label>
+                    <label className="flex items-center gap-1 text-sm font-medium mb-1">
+                      Dirección
+                      <span className="text-red-500 text-lg">*</span>
+                    </label>
                     <input
                       type="text"
                       name="direccion"
@@ -1282,12 +1290,16 @@ const AdminPage = () => {
                       onChange={handleCentroFormChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       required
+                      placeholder="Ej: Calle 1, Santo Domingo"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="form-group">
-                      <label className="block text-sm font-medium mb-1">Latitud</label>
+                      <label className="flex items-center gap-1 text-sm font-medium mb-1">
+                        Latitud
+                        <span className="text-red-500 text-lg">*</span>
+                      </label>
                       <input
                         type="number"
                         step="0.0001"
@@ -1295,10 +1307,15 @@ const AdminPage = () => {
                         value={centroForm.latitud}
                         onChange={handleCentroFormChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        required
+                        placeholder="Ej: 18.4861"
                       />
                     </div>
                     <div className="form-group">
-                      <label className="block text-sm font-medium mb-1">Longitud</label>
+                      <label className="flex items-center gap-1 text-sm font-medium mb-1">
+                        Longitud
+                        <span className="text-red-500 text-lg">*</span>
+                      </label>
                       <input
                         type="number"
                         step="0.0001"
@@ -1306,6 +1323,8 @@ const AdminPage = () => {
                         value={centroForm.longitud}
                         onChange={handleCentroFormChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        required
+                        placeholder="Ej: -69.9312"
                       />
                     </div>
                   </div>
@@ -1319,7 +1338,7 @@ const AdminPage = () => {
                         value={centroForm.telefono}
                         onChange={handleCentroFormChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                        required
+                        placeholder="Ej: 8098765432"
                       />
                     </div>
                     <div className="form-group">

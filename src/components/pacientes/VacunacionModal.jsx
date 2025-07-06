@@ -5,7 +5,7 @@ import {
 } from "@nextui-org/react";
 import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
 import RegistrarVacunacionModal from '../vacunacion/RegistrarVacunacionModal';
-import { getEsquemaVacunacion } from '../../services/esquemaService';
+import { getEsquemaVacunacion } from '../../services/esquemaService.js';
 
 export default function VacunacionModal({
   open,

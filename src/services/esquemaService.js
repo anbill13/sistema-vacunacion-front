@@ -1,5 +1,5 @@
 // Servicio para obtener el esquema de vacunación desde el API
-import apiService from './apiService.jsx';
+import apiService from './apiService';
 
 export async function getEsquemaVacunacion() {
   try {

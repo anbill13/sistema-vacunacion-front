@@ -24,7 +24,7 @@ import {
 import RegistroForm from './forms/RegistroForm';
 import * as pacientesService from '../../services/pacientesService'; // Único servicio usado
 import centrosService from '../../services/centrosService'; // Importar el servicio de centros
-import { getEsquemaVacunacion } from '../../services/esquemaService'; // Importar el servicio de esquema
+import { getEsquemaVacunacion } from '../../services/esquemaService.js'; // Importar el servicio de esquema
 
 // Utilidades para calcular próximas vacunaciones
 function edadRecomendadaAMeses(edad) {
