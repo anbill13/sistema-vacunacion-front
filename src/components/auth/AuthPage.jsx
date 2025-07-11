@@ -1,50 +1,51 @@
 // src/components/auth/AuthPage.jsx
-import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  CardBody, 
-  CardHeader, 
-  Input, 
-  Button, 
-  Tabs, 
-  Tab, 
-  Select, 
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  Input,
+  Button,
+  Tabs,
+  Tab,
+  Select,
   SelectItem,
   Divider,
   Link,
-  Checkbox
+  Checkbox,
 } from "@nextui-org/react";
-import { EyeIcon, EyeSlashIcon } from './Icons';
-import authService from '../../services/authService';
-import tutorsService from '../../services/tutorsService';
-import usuariosService from '../../services/usuariosService';
+import { EyeIcon, EyeSlashIcon } from "./Icons";
+import authService from "../../services/authService";
+import tutorsService from "../../services/tutorsService";
+import usuariosService from "../../services/usuariosService";
 
 const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
-  const [loginType, setLoginType] = useState('staff'); // 'staff' o 'padre'
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
+    useState(false);
+  const [loginType, setLoginType] = useState("staff"); // 'staff' o 'padre'
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    confirmPassword: '',
-    nombre: '',
-    email: '',
-    identificacion: '',
-    telefono: '',
-    direccion: '',
-    nacionalidad: 'Dominicano',
-    relacion: 'Madre',
+    username: "",
+    password: "",
+    confirmPassword: "",
+    nombre: "",
+    email: "",
+    identificacion: "",
+    telefono: "",
+    direccion: "",
+    nacionalidad: "Dominicano",
+    relacion: "Madre",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   // Removed duplicate togglePasswordVisibility declaration
 
   useEffect(() => {
-    const savedDarkMode = localStorage.getItem('publicDarkMode');
+    const savedDarkMode = localStorage.getItem("publicDarkMode");
     if (savedDarkMode) {
       setDarkMode(JSON.parse(savedDarkMode));
     }
@@ -52,19 +53,19 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
 
   useEffect(() => {
     if (darkMode) {
-      document.body.classList.add('dark-mode');
+      document.body.classList.add("dark-mode");
     } else {
-      document.body.classList.remove('dark-mode');
+      document.body.classList.remove("dark-mode");
     }
-    localStorage.setItem('publicDarkMode', JSON.stringify(darkMode));
+    localStorage.setItem("publicDarkMode", JSON.stringify(darkMode));
   }, [darkMode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    
+    setError("");
+
     if (!isLogin && !acceptTerms) {
-      setError('Debes aceptar los términos y condiciones para registrarte');
+      setError("Debes aceptar los términos y condiciones para registrarte");
       return;
     }
 
@@ -73,112 +74,138 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
     try {
       if (isLogin) {
         // Clear token before login to avoid sending stale token
-        localStorage.removeItem('authToken');
-        
+        localStorage.removeItem("authToken");
+
         let user;
-        if (loginType === 'padre') {
+        if (loginType === "padre") {
           // Login para padres usando nombre y cédula
-          const result = await authService.loginPadre(formData.nombre, formData.identificacion);
+          const result = await authService.loginPadre(
+            formData.nombre,
+            formData.identificacion
+          );
           if (result.success) {
             user = result.user;
-            console.log('[AuthPage] ✅ Login de padre exitoso:', user);
+            console.log("[AuthPage] ✅ Login de padre exitoso:", user);
           } else {
-            setError(result.error || 'No se encontró un padre/tutor con esos datos');
+            setError(
+              result.error || "No se encontró un padre/tutor con esos datos"
+            );
             return;
           }
         } else {
           // Login tradicional para personal del centro
-          user = await usuariosService.validateLogin(formData.username, formData.password);
+          user = await usuariosService.validateLogin(
+            formData.username,
+            formData.password
+          );
           if (!user) {
-            setError('Usuario o contraseña incorrectos');
+            setError("Usuario o contraseña incorrectos");
             return;
           }
         }
-        
+
         if (user) {
           // Guarda el usuario autenticado para persistencia tras recarga
-          localStorage.setItem('currentUser', JSON.stringify(user));
+          localStorage.setItem("currentUser", JSON.stringify(user));
 
           // Intentar obtener y guardar vacunas, lotes y usuarios si tienes permisos
           try {
             const vacunas = await usuariosService.getVacunas?.();
-            if (vacunas) localStorage.setItem('vacunas', JSON.stringify(vacunas));
-          } catch (e) { console.warn('No se pudieron guardar vacunas en localStorage'); }
+            if (vacunas)
+              localStorage.setItem("vacunas", JSON.stringify(vacunas));
+          } catch (e) {
+            console.warn("No se pudieron guardar vacunas en localStorage");
+          }
 
           try {
             const lotes = await usuariosService.getLotesVacunas?.();
-            if (lotes) localStorage.setItem('lotesVacunas', JSON.stringify(lotes));
-          } catch (e) { console.warn('No se pudieron guardar lotes en localStorage'); }
+            if (lotes)
+              localStorage.setItem("lotesVacunas", JSON.stringify(lotes));
+          } catch (e) {
+            console.warn("No se pudieron guardar lotes en localStorage");
+          }
 
           try {
             const usuarios = await usuariosService.getUsuarios?.();
-            if (usuarios) localStorage.setItem('usuarios', JSON.stringify(usuarios));
-          } catch (e) { console.warn('No se pudieron guardar usuarios en localStorage'); }
+            if (usuarios)
+              localStorage.setItem("usuarios", JSON.stringify(usuarios));
+          } catch (e) {
+            console.warn("No se pudieron guardar usuarios en localStorage");
+          }
 
-          if (typeof onLogin === 'function') {
+          if (typeof onLogin === "function") {
             onLogin(user);
           } else {
-            console.error('onLogin is not a function');
+            console.error("onLogin is not a function");
           }
         }
       } else {
         // Validaciones para registro de padre/tutor
         if (!formData.username?.trim()) {
-          setError('El nombre de usuario es requerido');
+          setError("El nombre de usuario es requerido");
           return;
         }
         if (formData.password !== formData.confirmPassword) {
-          setError('Las contraseñas no coinciden');
+          setError("Las contraseñas no coinciden");
           return;
         }
         if (formData.password.length < 6) {
-          setError('La contraseña debe tener al menos 6 caracteres');
+          setError("La contraseña debe tener al menos 6 caracteres");
           return;
         }
         if (!formData.nombre?.trim()) {
-          setError('El nombre completo es requerido');
+          setError("El nombre completo es requerido");
           return;
         }
         if (!formData.identificacion?.trim()) {
-          setError('La identificación es requerida');
+          setError("La identificación es requerida");
           return;
         }
         if (!formData.email?.trim()) {
-          setError('El email es requerido');
+          setError("El email es requerido");
           return;
         }
         if (!formData.telefono?.trim()) {
-          setError('El teléfono es requerido');
+          setError("El teléfono es requerido");
           return;
         }
         if (!formData.direccion?.trim()) {
-          setError('La dirección es requerida');
+          setError("La dirección es requerida");
           return;
         }
         if (!formData.nacionalidad?.trim()) {
-          setError('La nacionalidad es requerida');
+          setError("La nacionalidad es requerida");
           return;
         }
         if (!formData.relacion?.trim()) {
-          setError('La relación con el niño es requerida');
+          setError("La relación con el niño es requerida");
           return;
         }
 
-        console.log('[AuthPage] === INICIANDO REGISTRO DE PADRE ===');
-        console.log('[AuthPage] FormData completo antes de procesar:', formData);
-        console.log('[AuthPage] === VERIFICANDO CAMPOS CRÍTICOS ===');
-        console.log('[AuthPage] username:', formData.username);
-        console.log('[AuthPage] password:', formData.password ? '***PRESENTE***' : '***AUSENTE***');
-        console.log('[AuthPage] nombre:', formData.nombre);
-        console.log('[AuthPage] identificacion:', formData.identificacion);
+        console.log("[AuthPage] === INICIANDO REGISTRO DE PADRE ===");
+        console.log(
+          "[AuthPage] FormData completo antes de procesar:",
+          formData
+        );
+        console.log("[AuthPage] === VERIFICANDO CAMPOS CRÍTICOS ===");
+        console.log("[AuthPage] username:", formData.username);
+        console.log(
+          "[AuthPage] password:",
+          formData.password ? "***PRESENTE***" : "***AUSENTE***"
+        );
+        console.log("[AuthPage] nombre:", formData.nombre);
+        console.log("[AuthPage] identificacion:", formData.identificacion);
 
         // Generar UUID para id_niño
         const generateUUID = () => {
-          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = (Math.random() * 16) | 0;
-            const v = c === 'x' ? r : ((r & 0x3) | 0x8);
-            return v.toString(16);
-          });
+          return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+            /[xy]/g,
+            function (c) {
+              const r = (Math.random() * 16) | 0;
+              const v = c === "x" ? r : (r & 0x3) | 0x8;
+              return v.toString(16);
+            }
+          );
         };
 
         // Crear el tutor con el formato requerido (incluye username y password)
@@ -192,71 +219,84 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
           email: formData.email,
           direccion: formData.direccion,
           username: formData.username,
-          password: formData.password
+          password: formData.password,
         };
 
-        console.log('[AuthPage] === DATOS DEL TUTOR A ENVIAR AL BACKEND ===');
+        console.log("[AuthPage] === DATOS DEL TUTOR A ENVIAR AL BACKEND ===");
         console.log(JSON.stringify(tutorData, null, 2));
-        console.log('[AuthPage] === VERIFICACIÓN FINAL DE USERNAME Y PASSWORD ===');
-        console.log('[AuthPage] tutorData.username:', tutorData.username);
-        console.log('[AuthPage] tutorData.password:', tutorData.password ? '***PRESENTE***' : '***AUSENTE***');
-        console.log('[AuthPage] === VERIFICANDO CADA CAMPO ===');
-        console.log('✓ id_niño:', tutorData.id_niño, '(debe ser UUID)');
-        console.log('✓ nombre:', tutorData.nombre);
-        console.log('✓ relacion:', tutorData.relacion);
-        console.log('✓ nacionalidad:', tutorData.nacionalidad);
-        console.log('✓ identificacion:', tutorData.identificacion);
-        console.log('✓ telefono:', tutorData.telefono);
-        console.log('✓ email:', tutorData.email);
-        console.log('✓ direccion:', tutorData.direccion);
-        console.log('✓ username:', tutorData.username);
-        console.log('✓ password:', tutorData.password ? '***' : 'NO_PASSWORD');
-        console.log('[AuthPage] === CONFIRMANDO ESTRUCTURA EXACTA ===');
-        console.log('Campo id_niño está presente:', 'id_niño' in tutorData);
-        console.log('Valor de id_niño es UUID:', tutorData.id_niño && tutorData.id_niño.length === 36);
-        console.log('Campo username está presente:', 'username' in tutorData);
-        console.log('Campo password está presente:', 'password' in tutorData);
-        console.log('[AuthPage] === FIN VERIFICACIÓN ===');
-        
-        console.log('[AuthPage] Llamando a tutorsService.createTutor...');
+        console.log(
+          "[AuthPage] === VERIFICACIÓN FINAL DE USERNAME Y PASSWORD ==="
+        );
+        console.log("[AuthPage] tutorData.username:", tutorData.username);
+        console.log(
+          "[AuthPage] tutorData.password:",
+          tutorData.password ? "***PRESENTE***" : "***AUSENTE***"
+        );
+        console.log("[AuthPage] === VERIFICANDO CADA CAMPO ===");
+        console.log("✓ id_niño:", tutorData.id_niño, "(debe ser UUID)");
+        console.log("✓ nombre:", tutorData.nombre);
+        console.log("✓ relacion:", tutorData.relacion);
+        console.log("✓ nacionalidad:", tutorData.nacionalidad);
+        console.log("✓ identificacion:", tutorData.identificacion);
+        console.log("✓ telefono:", tutorData.telefono);
+        console.log("✓ email:", tutorData.email);
+        console.log("✓ direccion:", tutorData.direccion);
+        console.log("✓ username:", tutorData.username);
+        console.log("✓ password:", tutorData.password ? "***" : "NO_PASSWORD");
+        console.log("[AuthPage] === CONFIRMANDO ESTRUCTURA EXACTA ===");
+        console.log("Campo id_niño está presente:", "id_niño" in tutorData);
+        console.log(
+          "Valor de id_niño es UUID:",
+          tutorData.id_niño && tutorData.id_niño.length === 36
+        );
+        console.log("Campo username está presente:", "username" in tutorData);
+        console.log("Campo password está presente:", "password" in tutorData);
+        console.log("[AuthPage] === FIN VERIFICACIÓN ===");
+
+        console.log("[AuthPage] Llamando a tutorsService.createTutor...");
         const tutorResponse = await tutorsService.createTutor(tutorData);
-        console.log('[AuthPage] ✅ Tutor creado exitosamente:', tutorResponse);
-        
-        console.log('[AuthPage] === FINALIZANDO REGISTRO ===');
+        console.log("[AuthPage] ✅ Tutor creado exitosamente:", tutorResponse);
+
+        console.log("[AuthPage] === FINALIZANDO REGISTRO ===");
         // Registro exitoso, mostrar mensaje de éxito
-        setError('');
-        alert('¡Registro exitoso! Tu perfil de padre ha sido creado correctamente con credenciales de acceso. Ahora puedes iniciar sesión.');
+        setError("");
+        alert(
+          "¡Registro exitoso! Tu perfil de padre ha sido creado correctamente con credenciales de acceso. Ahora puedes iniciar sesión."
+        );
         setIsLogin(true); // Cambiar a modo login
         // Limpiar el formulario
         setFormData({
-          username: '',
-          password: '',
-          confirmPassword: '',
-          nombre: '',
-          email: '',
-          identificacion: '',
-          telefono: '',
-          direccion: '',
-          nacionalidad: 'Dominicano',
-          relacion: 'Madre',
+          username: "",
+          password: "",
+          confirmPassword: "",
+          nombre: "",
+          email: "",
+          identificacion: "",
+          telefono: "",
+          direccion: "",
+          nacionalidad: "Dominicano",
+          relacion: "Madre",
         });
       }
     } catch (err) {
       // More user-friendly error messages
-      let errorMessage = err.message || 'Error en el servidor. Intenta nuevamente.';
-      
-      if (errorMessage.includes('Error en la solicitud al servidor')) {
-        errorMessage = 'Hay un problema temporal con el servidor de autenticación. ' +
-                     'El sistema está intentando métodos alternativos de verificación. ' +
-                     'Si el problema persiste, contacte al administrador.';
-      } else if (errorMessage.includes('Invalid credentials')) {
-        errorMessage = 'Usuario o contraseña incorrectos. Verifique sus credenciales.';
-      } else if (errorMessage.includes('User account is inactive')) {
-        errorMessage = 'Su cuenta está inactiva. Contacte al administrador.';
+      let errorMessage =
+        err.message || "Error en el servidor. Intenta nuevamente.";
+
+      if (errorMessage.includes("Error en la solicitud al servidor")) {
+        errorMessage =
+          "Hay un problema temporal con el servidor de autenticación. " +
+          "El sistema está intentando métodos alternativos de verificación. " +
+          "Si el problema persiste, contacte al administrador.";
+      } else if (errorMessage.includes("Invalid credentials")) {
+        errorMessage =
+          "Usuario o contraseña incorrectos. Verifique sus credenciales.";
+      } else if (errorMessage.includes("User account is inactive")) {
+        errorMessage = "Su cuenta está inactiva. Contacte al administrador.";
       }
-      
+
       setError(errorMessage);
-      console.error('Error de autenticación:', err);
+      console.error("Error de autenticación:", err);
     } finally {
       setLoading(false);
     }
@@ -269,31 +309,38 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
       ...formData,
       [name]: value,
     });
-    setError('');
+    setError("");
   };
 
-  const togglePasswordVisibility = () => setIsPasswordVisible(!isPasswordVisible);
-  const toggleConfirmPasswordVisibility = () => setIsConfirmPasswordVisible(!isConfirmPasswordVisible);
-
+  const togglePasswordVisibility = () =>
+    setIsPasswordVisible(!isPasswordVisible);
+  const toggleConfirmPasswordVisibility = () =>
+    setIsConfirmPasswordVisible(!isConfirmPasswordVisible);
 
   const handleTabChange = (key) => {
     setIsLogin(key === "login");
-    setError('');
-    setLoginType('staff'); // Reset to staff login when changing tabs
+    setError("");
+    setLoginType("staff"); // Reset to staff login when changing tabs
     if (key === "login") {
-      setFormData({ ...formData, username: '', password: '', nombre: '', identificacion: '' });
+      setFormData({
+        ...formData,
+        username: "",
+        password: "",
+        nombre: "",
+        identificacion: "",
+      });
     } else {
       setFormData({
-        username: '',
-        password: '',
-        confirmPassword: '',
-        nombre: '',
-        email: '',
-        identificacion: '',
-        telefono: '',
-        direccion: '',
-        nacionalidad: 'Dominicano',
-        relacion: 'Madre',
+        username: "",
+        password: "",
+        confirmPassword: "",
+        nombre: "",
+        email: "",
+        identificacion: "",
+        telefono: "",
+        direccion: "",
+        nacionalidad: "Dominicano",
+        relacion: "Madre",
       });
       setAcceptTerms(false);
     }
@@ -301,14 +348,12 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
 
   // Handler for demo login
   const handleDemoLogin = (demoUser) => {
-    if (typeof onLogin === 'function') {
+    if (typeof onLogin === "function") {
       onLogin(demoUser);
     } else {
-      console.error('onLogin is not a function');
+      console.error("onLogin is not a function");
     }
   };
-
-
 
   return (
     <div className="auth-page">
@@ -328,19 +373,21 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
             isIconOnly
             variant="light"
             className="absolute right-0 top-0"
-            title={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
           >
-            {darkMode ? '☀️' : '🌙'}
+            {darkMode ? "☀️" : "🌙"}
           </Button>
           <h1 className="text-4xl font-bold mb-2">Sistema de Vacunación</h1>
-          <p className="text-lg text-default-500">Gestión integral de centros de vacunación y pacientes</p>
+          <p className="text-lg text-default-500">
+            Gestión integral de centros de vacunación y pacientes
+          </p>
         </div>
         <div className="auth-content">
           <Card className="auth-card w-full max-w-md">
             <CardHeader className="pb-0 pt-4 px-4 flex-col items-start">
-              <Tabs 
-                fullWidth 
-                size="lg" 
+              <Tabs
+                fullWidth
+                size="lg"
                 aria-label="Opciones de autenticación"
                 selectedKey={isLogin ? "login" : "register"}
                 onSelectionChange={handleTabChange}
@@ -364,26 +411,38 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                     <div className="mb-4">
                       <div className="flex gap-2">
                         <Button
-                          color={loginType === 'staff' ? "primary" : "default"}
-                          variant={loginType === 'staff' ? "solid" : "bordered"}
+                          color={loginType === "staff" ? "primary" : "default"}
+                          variant={loginType === "staff" ? "solid" : "bordered"}
                           size="sm"
                           onClick={() => {
-                            setLoginType('staff');
-                            setFormData({ ...formData, username: '', password: '', nombre: '', identificacion: '' });
-                            setError('');
+                            setLoginType("staff");
+                            setFormData({
+                              ...formData,
+                              username: "",
+                              password: "",
+                              nombre: "",
+                              identificacion: "",
+                            });
+                            setError("");
                           }}
                           className="flex-1"
                         >
                           👩‍⚕️ Personal del Centro
                         </Button>
                         <Button
-                          color={loginType === 'padre' ? "primary" : "default"}
-                          variant={loginType === 'padre' ? "solid" : "bordered"}
+                          color={loginType === "padre" ? "primary" : "default"}
+                          variant={loginType === "padre" ? "solid" : "bordered"}
                           size="sm"
                           onClick={() => {
-                            setLoginType('padre');
-                            setFormData({ ...formData, username: '', password: '', nombre: '', identificacion: '' });
-                            setError('');
+                            setLoginType("padre");
+                            setFormData({
+                              ...formData,
+                              username: "",
+                              password: "",
+                              nombre: "",
+                              identificacion: "",
+                            });
+                            setError("");
                           }}
                           className="flex-1"
                         >
@@ -392,7 +451,7 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                       </div>
                     </div>
 
-                    {loginType === 'staff' ? (
+                    {loginType === "staff" ? (
                       // Login tradicional para personal
                       <>
                         <Input
@@ -404,7 +463,9 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                           variant="bordered"
                           fullWidth
                           required
-                          startContent={<span className="text-default-400">👤</span>}
+                          startContent={
+                            <span className="text-default-400">👤</span>
+                          }
                         />
 
                         <Input
@@ -417,10 +478,12 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                           variant="bordered"
                           fullWidth
                           required
-                          startContent={<span className="text-default-400">🔒</span>}
+                          startContent={
+                            <span className="text-default-400">🔒</span>
+                          }
                           endContent={
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={togglePasswordVisibility}
                               className="focus:outline-none"
                             >
@@ -435,7 +498,9 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
 
                         <div className="flex justify-between items-center">
                           <Checkbox size="sm">Recordarme</Checkbox>
-                          <Link href="#" size="sm">¿Olvidaste tu contraseña?</Link>
+                          <Link href="#" size="sm">
+                            ¿Olvidaste tu contraseña?
+                          </Link>
                         </div>
                       </>
                     ) : (
@@ -444,9 +509,13 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                         <div className="bg-blue-50 p-3 rounded-lg mb-4">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xl">👨‍👩‍👧‍👦</span>
-                            <h4 className="text-md font-semibold">Acceso para Padres/Tutores</h4>
+                            <h4 className="text-md font-semibold">
+                              Acceso para Padres/Tutores
+                            </h4>
                           </div>
-                          <p className="text-sm text-default-500">Ingresa tu nombre completo y cédula para acceder</p>
+                          <p className="text-sm text-default-500">
+                            Ingresa tu nombre completo y cédula para acceder
+                          </p>
                         </div>
 
                         <Input
@@ -458,7 +527,9 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                           variant="bordered"
                           fullWidth
                           required
-                          startContent={<span className="text-default-400">👤</span>}
+                          startContent={
+                            <span className="text-default-400">👤</span>
+                          }
                         />
 
                         <Input
@@ -470,11 +541,14 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                           variant="bordered"
                           fullWidth
                           required
-                          startContent={<span className="text-default-400">🆔</span>}
+                          startContent={
+                            <span className="text-default-400">🆔</span>
+                          }
                         />
 
                         <div className="bg-amber-50 p-3 rounded-lg text-sm text-amber-800">
-                          <strong>💡 Nota:</strong> Debes estar registrado como tutor en el sistema para poder acceder.
+                          <strong>💡 Nota:</strong> Debes estar registrado como
+                          tutor en el sistema para poder acceder.
                         </div>
                       </>
                     )}
@@ -491,7 +565,9 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                       variant="bordered"
                       fullWidth
                       required
-                      startContent={<span className="text-default-400">👤</span>}
+                      startContent={
+                        <span className="text-default-400">👤</span>
+                      }
                     />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -506,8 +582,8 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                         fullWidth
                         required
                         endContent={
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             onClick={togglePasswordVisibility}
                             className="focus:outline-none"
                           >
@@ -530,8 +606,8 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                         fullWidth
                         required
                         endContent={
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             onClick={toggleConfirmPasswordVisibility}
                             className="focus:outline-none"
                           >
@@ -593,78 +669,107 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                     </div>
 
                     {/* Campos adicionales para padres/tutores */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Input
-                            label="Dirección"
-                            name="direccion"
-                            value={formData.direccion}
-                            onChange={handleChange}
-                            placeholder="Tu dirección completa"
-                            variant="bordered"
-                            fullWidth
-                            required
-                          />
-                          <Input
-                            label="Nacionalidad"
-                            name="nacionalidad"
-                            value={formData.nacionalidad}
-                            onChange={handleChange}
-                            placeholder="Dominicano"
-                            variant="bordered"
-                            fullWidth
-                            required
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="Dirección"
+                        name="direccion"
+                        value={formData.direccion}
+                        onChange={handleChange}
+                        placeholder="Tu dirección completa"
+                        variant="bordered"
+                        fullWidth
+                        required
+                      />
+                      <Input
+                        label="Nacionalidad"
+                        name="nacionalidad"
+                        value={formData.nacionalidad}
+                        onChange={handleChange}
+                        placeholder="Dominicano"
+                        variant="bordered"
+                        fullWidth
+                        required
+                      />
+                    </div>
 
-                        <Select
-                          label="Relación con el niño"
-                          name="relacion"
-                          selectedKeys={[formData.relacion]}
-                          onSelectionChange={(keys) => {
-                            const selectedValue = Array.from(keys)[0] || 'Madre';
-                            handleChange({target: {name: 'relacion', value: selectedValue}});
-                          }}
-                          variant="bordered"
-                          fullWidth
-                          required
-                        >
-                          <SelectItem key="Madre" value="Madre">Madre</SelectItem>
-                          <SelectItem key="Padre" value="Padre">Padre</SelectItem>
-                          <SelectItem key="Tutor Legal" value="Tutor Legal">Tutor Legal</SelectItem>
-                        </Select>
+                    <Select
+                      label="Relación con el niño"
+                      name="relacion"
+                      selectedKeys={[formData.relacion]}
+                      onSelectionChange={(keys) => {
+                        const selectedValue = Array.from(keys)[0] || "Madre";
+                        handleChange({
+                          target: { name: "relacion", value: selectedValue },
+                        });
+                      }}
+                      variant="bordered"
+                      fullWidth
+                      required
+                    >
+                      <SelectItem key="Madre" value="Madre">
+                        Madre
+                      </SelectItem>
+                      <SelectItem key="Padre" value="Padre">
+                        Padre
+                      </SelectItem>
+                      <SelectItem key="Tutor Legal" value="Tutor Legal">
+                        Tutor Legal
+                      </SelectItem>
+                    </Select>
 
-                   {/* Información para padres */}
-                     <div className="bg-default-50 p-3 rounded-lg">
+                    {/* Información para padres */}
+                    <div className="bg-default-50 p-3 rounded-lg">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xl">👨‍👩‍👧‍👦</span>
-                        <h4 className="text-md font-semibold">Registro de Padre/Tutor</h4>
+                        <h4 className="text-md font-semibold">
+                          Registro de Padre/Tutor
+                        </h4>
                       </div>
-                      <p className="text-sm text-default-500">Crea tu perfil de padre/tutor con credenciales de acceso al sistema</p>
+                      <p className="text-sm text-default-500">
+                        Crea tu perfil de padre/tutor con credenciales de acceso
+                        al sistema
+                      </p>
                       <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-                        <strong>📝 Nota:</strong> Al registrarte se creará tu perfil completo de tutor que incluye:
+                        <strong>📝 Nota:</strong> Al registrarte se creará tu
+                        perfil completo de tutor que incluye:
                         <ul className="mt-1 ml-2">
-                          <li>• Credenciales de acceso (usuario y contraseña)</li>
+                          <li>
+                            • Credenciales de acceso (usuario y contraseña)
+                          </li>
                           <li>• Información personal y de contacto</li>
-                          <li>• Capacidad para gestionar citas de vacunación</li>
+                          <li>
+                            • Capacidad para gestionar citas de vacunación
+                          </li>
                         </ul>
                       </div>
                     </div>
 
-                    <Checkbox 
+                    <Checkbox
                       isSelected={acceptTerms}
                       onValueChange={setAcceptTerms}
                       size="sm"
                     >
-                      Acepto los <Link href="#" size="sm">términos y condiciones</Link> y la <Link href="#" size="sm">política de privacidad</Link>
+                      Acepto los{" "}
+                      <Link href="#" size="sm">
+                        términos y condiciones
+                      </Link>{" "}
+                      y la{" "}
+                      <Link href="#" size="sm">
+                        política de privacidad
+                      </Link>
                     </Checkbox>
 
-                    {/* Debug info para desarrollo */}
-                    {process.env.NODE_ENV === 'development' && (
+                    {/* COMENTADO: Debug info para desarrollo - Deshabilitado */}
+                    {false && process.env.NODE_ENV === "development" && (
                       <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-small">
-                        <div><strong>Debug Info - FormData:</strong></div>
+                        <div>
+                          <strong>Debug Info - FormData:</strong>
+                        </div>
                         <div className="text-xs space-y-1 mt-2">
                           <div>username: "{formData.username}"</div>
-                          <div>password: "{formData.password ? '***' : ''}"</div>
+                          <div>
+                            password: "{formData.password ? "***" : ""}"
+                          </div>
                           <div>nombre: "{formData.nombre}"</div>
                           <div>identificacion: "{formData.identificacion}"</div>
                           <div>email: "{formData.email}"</div>
@@ -690,14 +795,17 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                   className="font-semibold"
                   size="lg"
                 >
-                  {loading ? 'Procesando...' : (
-                    isLogin ? (
-                      loginType === 'padre' ? 'Acceder como Padre' : 'Iniciar Sesión'
-                    ) : 'Registrar Padre'
-                  )}
+                  {loading
+                    ? "Procesando..."
+                    : isLogin
+                    ? loginType === "padre"
+                      ? "Acceder como Padre"
+                      : "Iniciar Sesión"
+                    : "Registrar Padre"}
                 </Button>
 
-                {isLogin && (
+                {/* COMENTADO: Usuarios de Acceso Rápido - Usuarios Demo */}
+                {/* {isLogin && (
                   <div className="mt-4 p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                     <h4 className="text-sm font-semibold mb-3 text-blue-800">🚀 Acceso Rápido - Usuarios Demo</h4>
                     
@@ -853,15 +961,15 @@ const AuthPage = ({ isOpen = true, onClose, onLogin, onBack }) => {
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
 
                 {isLogin && (
                   <div className="text-center mt-4">
                     <p className="text-sm text-default-500">
-                      ¿No tienes una cuenta? 
-                      <Button 
-                        variant="light" 
-                        className="ml-1 p-0" 
+                      ¿No tienes una cuenta?
+                      <Button
+                        variant="light"
+                        className="ml-1 p-0"
                         onClick={() => handleTabChange("register")}
                       >
                         Regístrate aquí
